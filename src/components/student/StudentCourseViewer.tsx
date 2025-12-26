@@ -147,15 +147,15 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      {/* Course Title Header */}
-      <div className="border-b bg-background py-3 flex-shrink-0">
+      {/* Course Title Header - Teal gradient */}
+      <div className="border-b bg-gradient-to-r from-secondary/20 via-primary/5 to-secondary/10 py-3 flex-shrink-0">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Course</p>
+              <p className="text-xs text-primary/70 mb-0.5 font-medium">Course</p>
               <h2 className="text-lg font-semibold">{courseTitle}</h2>
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-primary font-medium">
               {Math.round(progressPercentage)}% Complete
             </div>
           </div>
@@ -166,14 +166,14 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
         {/* Lessons Sidebar */}
         <div className={`${sidebarCollapsed ? 'w-0' : 'w-80 lg:w-96'} transition-all duration-300 border-r bg-background overflow-hidden flex-shrink-0`}>
           <div className="h-full overflow-y-auto pr-4 py-4 space-y-4">
-            {/* Course Progress */}
-            <Card className="border-0 shadow-none bg-muted/30">
-              <CardContent className="p-4 space-y-2">
+            {/* Course Progress - Teal gradient card */}
+            <Card className="clay-card border-0 bg-gradient-to-r from-primary/5 to-secondary/5 transition-smooth">
+              <CardContent className="p-4 space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="font-medium">Progress</span>
-                  <span className="text-muted-foreground">{Math.round(progressPercentage)}%</span>
+                  <span className="font-medium text-primary">Progress</span>
+                  <span className="text-primary font-semibold">{Math.round(progressPercentage)}%</span>
                 </div>
-                <Progress value={progressPercentage} className="h-2" />
+                <Progress value={progressPercentage} className="h-2 [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-primary/70" />
                 <p className="text-xs text-muted-foreground">
                   {completedLessons} of {lessons.length} lessons complete
                 </p>
@@ -186,20 +186,24 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
               <button
                 key={lesson.id}
                 onClick={() => setSelectedLesson(lesson)}
-                className={`w-full text-left p-3 rounded-lg transition-all ${
+                className={`w-full text-left p-3 rounded-lg transition-smooth ${
                   selectedLesson?.id === lesson.id
-                    ? 'bg-primary/10 border-l-4 border-primary'
-                    : 'hover:bg-muted/50'
+                    ? 'bg-primary/10 border-l-4 border-primary shadow-sm'
+                    : 'hover:bg-primary/5 hover:border-l-4 hover:border-primary/30'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5">
                     {lesson.is_completed ? (
-                      <div className="h-5 w-5 rounded-full bg-green-600 flex items-center justify-center">
+                      <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm shadow-green-500/30">
                         <Check className="h-3 w-3 text-white" />
                       </div>
+                    ) : selectedLesson?.id === lesson.id ? (
+                      <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm shadow-primary/30">
+                        <span className="text-xs text-white font-medium">{index + 1}</span>
+                      </div>
                     ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center">
+                      <div className="h-5 w-5 rounded-full border-2 border-primary/30 flex items-center justify-center">
                         <span className="text-xs text-muted-foreground">{index + 1}</span>
                       </div>
                     )}
@@ -217,7 +221,7 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
                     )}
                   </div>
                   {lesson.video_url && (
-                    <PlayCircle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <PlayCircle className={`h-4 w-4 flex-shrink-0 ${selectedLesson?.id === lesson.id ? 'text-primary' : 'text-muted-foreground'}`} />
                   )}
                 </div>
               </button>
@@ -226,7 +230,9 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
 
           {lessons.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              <PlayCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <PlayCircle className="h-8 w-8 text-primary" />
+              </div>
               <p className="text-sm">No lessons yet</p>
             </div>
           )}
@@ -238,12 +244,12 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
         {selectedLesson ? (
           <div>
             {/* Lesson Title & Mark Complete - FIRST */}
-            <div className="border-b bg-background py-6 px-6">
+            <div className="border-b bg-gradient-to-r from-secondary/10 via-background to-primary/5 py-6 px-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                    <div className="flex items-center gap-2 text-sm text-primary/70 mb-2">
                       <PlayCircle className="h-4 w-4" />
-                      <span>Lesson {currentLessonIndex + 1} of {lessons.length}</span>
+                      <span className="font-medium">Lesson {currentLessonIndex + 1} of {lessons.length}</span>
                     </div>
                     <h1 className="text-3xl font-bold">{selectedLesson.title}</h1>
                   </div>
@@ -251,7 +257,11 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
                     onClick={() => handleMarkAsComplete(selectedLesson.id, selectedLesson.is_completed)}
                     disabled={markingComplete}
                     variant={selectedLesson.is_completed ? 'outline' : 'default'}
-                    className="flex-shrink-0"
+                    className={`flex-shrink-0 transition-smooth ${
+                      selectedLesson.is_completed
+                        ? 'border-green-500 text-green-600 hover:bg-green-50'
+                        : 'bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20'
+                    }`}
                   >
                     {markingComplete ? (
                       'Updating...'
@@ -273,8 +283,8 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
               const isDirectVideo = videoUrl?.includes('supabase.co/storage')
 
               return (
-                <div className="w-full bg-muted/30 py-4 px-6">
-                  <div className="aspect-video bg-black w-full rounded-lg overflow-hidden">
+                <div className="w-full bg-gradient-to-b from-primary/5 to-secondary/5 py-4 px-6">
+                  <div className="aspect-video bg-black w-full rounded-xl overflow-hidden shadow-lg shadow-primary/10">
                     {isDirectVideo ? (
                       <video src={videoUrl || ''} controls className="w-full h-full">
                         Your browser does not support the video tag.
@@ -308,28 +318,28 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
               {/* PDF Materials */}
               {selectedLesson.pdf_url && (
                 <div>
-                  <h3 className="font-semibold text-lg mb-3">Lesson Materials</h3>
+                  <h3 className="font-semibold text-lg mb-3 text-primary">Lesson Materials</h3>
                   <a
                     href={selectedLesson.pdf_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block"
                   >
-                    <Card className="hover:border-primary transition-colors cursor-pointer">
+                    <Card className="clay-card hover:border-primary hover:shadow-md hover:shadow-primary/10 transition-smooth cursor-pointer group">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center group-hover:from-primary/30 group-hover:to-secondary/30 transition-smooth">
                               <FileText className="h-6 w-6 text-primary" />
                             </div>
                             <div>
-                              <p className="font-medium">PDF Slides & Materials</p>
+                              <p className="font-medium group-hover:text-primary transition-smooth">PDF Slides & Materials</p>
                               <p className="text-sm text-muted-foreground">Click to open or download</p>
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <ExternalLink className="h-5 w-5 text-muted-foreground" />
-                            <Download className="h-5 w-5 text-muted-foreground" />
+                            <ExternalLink className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-smooth" />
+                            <Download className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-smooth" />
                           </div>
                         </div>
                       </CardContent>
@@ -339,17 +349,19 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
               )}
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between pt-6 border-t">
+              <div className="flex justify-between pt-6 border-t border-primary/10">
                 <Button
                   variant="outline"
                   onClick={() => currentLessonIndex > 0 && setSelectedLesson(lessons[currentLessonIndex - 1])}
                   disabled={currentLessonIndex === 0}
+                  className="border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary transition-smooth disabled:opacity-50"
                 >
                   Previous Lesson
                 </Button>
                 <Button
                   onClick={() => currentLessonIndex < lessons.length - 1 && setSelectedLesson(lessons[currentLessonIndex + 1])}
                   disabled={currentLessonIndex === lessons.length - 1}
+                  className="bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 transition-smooth disabled:opacity-50"
                 >
                   Next Lesson
                 </Button>
@@ -359,8 +371,10 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <div className="text-center">
-              <PlayCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p>Select a lesson to start learning</p>
+              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <PlayCircle className="h-10 w-10 text-primary" />
+              </div>
+              <p className="text-lg">Select a lesson to start learning</p>
             </div>
           </div>
         )}
