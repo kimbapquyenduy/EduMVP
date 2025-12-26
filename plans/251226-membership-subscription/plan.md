@@ -18,8 +18,8 @@ Tiered lesson access system with mock payment. Free class joining for community 
 
 | Phase | Name | Status | Dependencies |
 |-------|------|--------|--------------|
-| 01 | Database Schema | PENDING | None |
-| 02 | Payment Service | PENDING | Phase 01 |
+| 01 | Database Schema | ✅ DONE | None |
+| 02 | Payment Service | ✅ DONE | Phase 01 |
 | 03 | Checkout Flow | PENDING | Phase 02 |
 | 04 | Subscription Management | PENDING | Phase 03 |
 | 05 | Access Control | PENDING | Phase 04 |
