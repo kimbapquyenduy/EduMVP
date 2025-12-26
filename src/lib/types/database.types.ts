@@ -127,7 +127,7 @@ export interface CommentReaction {
 // ============================================
 export interface Conversation {
   id: string
-  class_id: string
+  class_id: string | null  // nullable for backward compat with existing convos
   created_at: string
   updated_at: string
 }
@@ -186,4 +186,59 @@ export interface ConversationWithParticipants extends Conversation {
 
 export interface MessageWithSender extends Message {
   sender: Profile
+}
+
+// ============================================
+// SUBSCRIPTION & PAYMENT TYPES
+// ============================================
+export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+export interface SubscriptionTier {
+  id: string
+  class_id: string
+  tier_level: 1 | 2 | 3
+  name: string
+  price: number // VND integer
+  lesson_unlock_count: number | null // NULL = unlimited
+  created_at: string
+  updated_at: string
+}
+
+export interface Payment {
+  id: string
+  user_id: string
+  class_id: string
+  amount: number // VND integer
+  currency: string
+  status: PaymentStatus
+  test_mode: boolean
+  card_last_four: string | null
+  error_message: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+  completed_at: string | null
+}
+
+export interface TierPurchase {
+  id: string
+  user_id: string
+  class_id: string
+  tier_id: string
+  payment_id: string | null
+  purchased_at: string
+}
+
+// ============================================
+// EXTENDED SUBSCRIPTION TYPES
+// ============================================
+export interface TierPurchaseWithTier extends TierPurchase {
+  tier: SubscriptionTier
+}
+
+export interface ClassWithTiers extends Class {
+  tiers: SubscriptionTier[]
+}
+
+export interface MemberWithTier extends Membership {
+  tier_purchase?: TierPurchaseWithTier
 }
