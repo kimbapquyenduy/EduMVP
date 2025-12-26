@@ -20,7 +20,7 @@ Tiered lesson access system with mock payment. Free class joining for community 
 |-------|------|--------|--------------|
 | 01 | Database Schema | ✅ DONE | None |
 | 02 | Payment Service | ✅ DONE | Phase 01 |
-| 03 | Checkout Flow | PENDING | Phase 02 |
+| 03 | Checkout Flow | ✅ DONE | Phase 02 |
 | 04 | Subscription Management | PENDING | Phase 03 |
 | 05 | Access Control | PENDING | Phase 04 |
 
