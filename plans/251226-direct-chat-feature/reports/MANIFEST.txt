@@ -1,0 +1,229 @@
+PHASE 2: UI COMPONENTS - TEST DOCUMENTATION MANIFEST
+=====================================================
+
+Generated: 2025-12-26
+Plan: Class-Restricted Direct Messaging Feature
+Phase: Phase 2 - UI Components
+
+DELIVERABLES
+============
+
+1. PHASE-02-REPORT.md (273 lines)
+   - Executive summary of Phase 2 testing
+   - Implementation analysis (6 files: 3 new, 3 modified)
+   - Issues identified (6 total: 1 critical, 3 high priority)
+   - Test coverage summary (37 test cases)
+   - Risk assessment matrix
+   - Test execution plan (5 phases)
+   - Success criteria checklist
+   - Dependencies and blockers
+   - Recommendations (4 tiers)
+   - Status: READY FOR REVIEW
+
+2. phase-02-test-scenarios.md (296 lines)
+   - Test case specifications
+   - Hook unit tests: 14 test cases (5+6+3 coverage)
+   - Component rendering tests: 12 test cases
+   - Integration scenarios: 5 manual test paths
+   - Mock data specifications
+   - 5 unresolved questions
+   - Status: COMPLETE & ACTIONABLE
+
+3. phase-02-analysis.md (237 lines)
+   - Code quality assessment per component
+   - Issues detailed with severity ratings
+   - Data flow validation
+   - Security review
+   - Risk matrix
+   - Testing priority (3 tiers)
+   - Recommendations for production
+   - Status: COMPLETE & TECHNICAL
+
+4. phase-02-test-summary.md (215 lines)
+   - Implementation status (✅/⚠️)
+   - Test scenarios overview
+   - Code analysis summary
+   - Risk assessment
+   - Test execution plan (4 phases)
+   - Success criteria (12 items)
+   - Dependencies on Phase 1
+   - Recommendations (4 tiers)
+   - Test files list
+   - 7 unresolved questions
+   - Status: COMPLETE & ACTIONABLE
+
+5. phase-02-testing-index.md (319 lines)
+   - Documentation index with file purposes
+   - Test coverage matrix (37 cases detailed)
+   - Critical test case priorities
+   - Files under test (6 total)
+   - Test execution workflow
+   - Success metrics
+   - Questions for Phase 1 reviewer
+   - Next steps
+   - Reference links
+   - Status: COMPLETE & COMPREHENSIVE
+
+6. PHASE-02-QUICKREF.md (TBD lines)
+   - Quick reference card
+   - Files created summary
+   - Critical issues at a glance
+   - Test coverage summary
+   - Next steps checklist
+   - Key metrics table
+   - Questions needing answers
+   - Test execution timeline
+   - File location guide
+   - Status: QUICK & ACTIONABLE
+
+MANIFEST.txt (This file)
+   - File manifest and metadata
+   - Document organization
+   - File usage guide
+
+TOTAL TEST DOCUMENTATION: ~1,340+ lines
+
+FILES ANALYZED
+==============
+
+Created (3 files):
+  - src/hooks/useUserClasses.ts (56 lines)
+  - src/hooks/useClassMembers.ts (80 lines)
+  - src/components/shared/StartDMDialog.tsx (268 lines)
+
+Modified (3 files):
+  - src/components/shared/MessagingInterface.tsx
+  - src/app/teacher/messages/page.tsx
+  - src/app/student/messages/page.tsx
+
+ISSUES IDENTIFIED: 6
+===================
+
+CRITICAL (1):
+  1. RPC function 'find_existing_dm' not verified (Phase 1 dependency)
+
+HIGH PRIORITY (3):
+  2. Dependency array bug - hooks refetch unnecessarily
+  3. URL parameter handling missing - conversation not auto-selected
+  4. Role format mismatch - navigation may break
+
+MEDIUM PRIORITY (2):
+  5. Race condition possible - fast clicks
+  6. Missing error states - no fallback UI
+
+TOTAL TEST CASES SPECIFIED: 37 + 5 scenarios
+==========================================
+
+Hook Unit Tests (18 cases):
+  - useUserClasses: 5 test cases
+  - useClassMembers: 6 test cases
+  - Edge cases: 3 test cases
+  - Error handling: 4 test cases
+
+Component Rendering Tests (19 cases):
+  - StartDMDialog: 12 test cases
+  - MessagingInterface: 2 test cases
+  - State management: 1 test case
+  - Integration: 4 test cases
+
+Integration Scenarios (5 manual paths):
+  - Scenario A: Happy path
+  - Scenario B: Duplicate detection
+  - Scenario C: Cross-role messaging
+  - Scenario D: Error handling
+  - Scenario E: Context switching
+
+DOCUMENT PURPOSE MATRIX
+=======================
+
+For: QA Engineers, Test Planners
+→ Read: phase-02-test-scenarios.md
+→ Contains: Detailed test cases, setup/expected outcomes
+
+For: Code Reviewers, Developers
+→ Read: phase-02-analysis.md
+→ Contains: Code quality issues, recommendations
+
+For: Project Managers, Stakeholders
+→ Read: PHASE-02-REPORT.md
+→ Contains: Executive summary, timeline, blockers
+
+For: Testing Coordinators
+→ Read: phase-02-testing-index.md
+→ Contains: Workflow, coverage matrix, success metrics
+
+For: Quick Status Check
+→ Read: PHASE-02-QUICKREF.md
+→ Contains: At-a-glance status, next steps
+
+DEPENDENCIES & BLOCKERS
+=======================
+
+Phase 1 Verification Needed:
+  - find_existing_dm(p_class_id, p_user1_id, p_user2_id) RPC exists?
+  - RLS policies configured on conversations table?
+  - RLS policies configured on conversation_participants table?
+  - Role format in profiles table ("TEACHER" or "teacher")?
+
+Project Configuration Needed:
+  - Test framework (Jest/Vitest) not configured
+  - Supabase mock library needed
+  - Test utilities setup
+
+Code Fixes Required:
+  - Fix dependency arrays in hooks
+  - Add URL parameter handling to MessagingInterface
+  - Add error states and loading UI
+  - Verify role format consistency
+
+TIMELINE ESTIMATE
+=================
+
+Pre-Testing Fixes (Phase 2A):     2-3 hours
+Unit Testing (Phase 2B):          4-6 hours [BLOCKED: no test framework]
+Integration Testing (Phase 2C):   3-4 hours [BLOCKED: needs Phase 2A]
+Security Testing (Phase 2D):      2-3 hours [BLOCKED: needs Phase 2A]
+Performance Testing (Phase 2E):   2-3 hours [BLOCKED: needs Phase 2B]
+
+Total Estimated: 13-19 hours after blockers resolved
+
+CRITICAL PATH
+=============
+
+1. ✅ Test documentation created
+2. ⏭️ Phase 1 verification (RPC, RLS) - BLOCKER
+3. ⏭️ Code fixes applied (deps, URL params) - BLOCKER
+4. ⏭️ Test framework setup - BLOCKER
+5. ⏭️ Execute unit tests (18+19 cases)
+6. ⏭️ Execute integration tests (5 scenarios)
+7. ⏭️ Security testing (RLS verification)
+8. ⏭️ Performance testing
+9. ✅ Phase 2 complete
+
+NEXT ACTIONS
+============
+
+1. Review all 6 documents
+2. Answer 7 unresolved questions (see PHASE-02-REPORT.md)
+3. Verify Phase 1 RPC function exists
+4. Apply code fixes (3 critical issues)
+5. Setup test framework
+6. Execute test suite
+
+SUCCESS CRITERIA
+================
+
+✓ All 37 test cases defined with setup/expected outcomes
+✓ Code quality assessed (6 issues identified)
+✓ Risk matrix created
+✓ Test execution plan documented (5 phases)
+✓ Documentation complete (1,340+ lines)
+✓ Integration scenarios specified (5 paths)
+✓ Blockers identified and tracked
+✓ Questions listed for review
+
+STATUS: Ready for Testing (after fixes applied)
+
+Generated: 2025-12-26
+Report Owner: Tester (QA Engineer)
+Plan Owner: EduMVP - Direct Messaging Feature

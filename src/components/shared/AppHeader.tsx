@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Settings, Loader2, GraduationCap, MessageSquare } from 'lucide-react'
+import { LogOut, User, Settings, Loader2, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
 
@@ -63,11 +63,12 @@ export function AppHeader({ userEmail, userName, userRole }: AppHeaderProps) {
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href={userRole === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard'} className="flex items-center gap-2 font-semibold text-lg hover:opacity-80 transition-opacity">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <GraduationCap className="h-5 w-5 text-white" />
-          </div>
-          <span>EDU Platform</span>
+        <Link href={userRole === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard'} className="flex items-center hover:opacity-80 transition-opacity">
+          <img
+            src="/Neurons-AI-Logo-Wide-900-x-300-px-Transparent.png"
+            alt="NeuronsAI"
+            className="h-9 w-auto"
+          />
         </Link>
 
         <div className="flex items-center gap-4">

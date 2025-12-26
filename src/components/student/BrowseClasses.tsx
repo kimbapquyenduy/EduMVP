@@ -45,7 +45,7 @@ export function BrowseClasses({ userId }: BrowseClassesProps) {
   const loadClasses = async () => {
     setLoading(true)
 
-    // Get all published classes
+    // Get all published classes with denormalized counts (bypasses RLS visibility issue)
     const { data: allClasses, error: classesError } = await supabase
       .from('classes')
       .select(`
@@ -68,29 +68,13 @@ export function BrowseClasses({ userId }: BrowseClassesProps) {
 
     const enrolledClassIds = new Set(memberships?.map((m) => m.class_id) || [])
 
-    // Get counts for each class
-    const classesWithCounts = await Promise.all(
-      allClasses.map(async (classItem) => {
-        // Get courses count
-        const { count: coursesCount } = await supabase
-          .from('courses')
-          .select('*', { count: 'exact', head: true })
-          .eq('class_id', classItem.id)
-
-        // Get members count
-        const { count: membersCount } = await supabase
-          .from('memberships')
-          .select('*', { count: 'exact', head: true })
-          .eq('class_id', classItem.id)
-
-        return {
-          ...classItem,
-          courses_count: coursesCount || 0,
-          members_count: membersCount || 0,
-          is_enrolled: enrolledClassIds.has(classItem.id),
-        }
-      })
-    )
+    // Map classes with enrollment status - counts come from denormalized columns
+    const classesWithCounts = allClasses.map((classItem) => ({
+      ...classItem,
+      courses_count: classItem.course_count || 0,
+      members_count: classItem.member_count || 0,
+      is_enrolled: enrolledClassIds.has(classItem.id),
+    }))
 
     setClasses(classesWithCounts as Class[])
     setLoading(false)

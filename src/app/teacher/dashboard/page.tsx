@@ -19,39 +19,18 @@ export default async function TeacherDashboard() {
     .eq('id', user.id)
     .single()
 
-  // Get classes
+  // Get classes with denormalized counts (no N+1 queries needed)
   const { data: classes } = await supabase
     .from('classes')
     .select('*')
     .eq('teacher_id', user.id)
     .order('created_at', { ascending: false })
 
-  // Get counts for each class using correct Supabase pattern
-  const classesWithCounts = await Promise.all(
-    (classes || []).map(async (classItem) => {
-      const { count: memberCount } = await supabase
-        .from('memberships')
-        .select('*', { count: 'exact', head: true })
-        .eq('class_id', classItem.id)
+  const totalMembers = (classes || []).reduce((acc, classItem) =>
+    acc + (classItem.member_count || 0), 0)
 
-      const { count: courseCount } = await supabase
-        .from('courses')
-        .select('*', { count: 'exact', head: true })
-        .eq('class_id', classItem.id)
-
-      return {
-        ...classItem,
-        memberCount: memberCount || 0,
-        courseCount: courseCount || 0
-      }
-    })
-  )
-
-  const totalMembers = classesWithCounts.reduce((acc, classItem) =>
-    acc + classItem.memberCount, 0)
-
-  const totalCourses = classesWithCounts.reduce((acc, classItem) =>
-    acc + classItem.courseCount, 0)
+  const totalCourses = (classes || []).reduce((acc, classItem) =>
+    acc + (classItem.course_count || 0), 0)
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -93,7 +72,7 @@ export default async function TeacherDashboard() {
               </div>
             </CardHeader>
             <CardContent className="relative z-10">
-              <div className="text-4xl font-bold">{classesWithCounts.length}</div>
+              <div className="text-4xl font-bold">{classes?.length || 0}</div>
               <p className="text-sm text-white/80 mt-1">Active communities</p>
             </CardContent>
           </Card>
@@ -136,9 +115,9 @@ export default async function TeacherDashboard() {
           <h2 className="text-2xl font-bold">Your Classes</h2>
         </div>
 
-        {classesWithCounts.length > 0 ? (
+        {classes && classes.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {classesWithCounts.map((classItem) => (
+            {classes.map((classItem) => (
               <Link key={classItem.id} href={`/teacher/classes/${classItem.id}`}>
                 <Card className="clay-card hover:shadow-xl transition-smooth cursor-pointer group h-full hover:-translate-y-1 overflow-hidden">
                   {classItem.thumbnail_url ? (
@@ -178,7 +157,7 @@ export default async function TeacherDashboard() {
                           <Users className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <div className="font-semibold">{classItem.memberCount}</div>
+                          <div className="font-semibold">{classItem.member_count || 0}</div>
                           <div className="text-xs text-muted-foreground">members</div>
                         </div>
                       </div>
@@ -187,7 +166,7 @@ export default async function TeacherDashboard() {
                           <BookOpen className="h-4 w-4 text-secondary" />
                         </div>
                         <div>
-                          <div className="font-semibold">{classItem.courseCount}</div>
+                          <div className="font-semibold">{classItem.course_count || 0}</div>
                           <div className="text-xs text-muted-foreground">courses</div>
                         </div>
                       </div>

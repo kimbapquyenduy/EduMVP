@@ -6,11 +6,12 @@ function Navigation() {
     <nav className="fixed top-0 left-0 right-0 z-50 glass">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <span className="text-white font-bold text-lg">E</span>
-            </div>
-            <span className="text-xl font-bold text-foreground">EDU Platform</span>
+          <Link href="/" className="flex items-center">
+            <img
+              src="/Neurons-AI-Logo-Wide-900-x-300-px-Transparent.png"
+              alt="NeuronsAI"
+              className="h-10 w-auto"
+            />
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-smooth font-medium">Features</a>
@@ -279,11 +280,12 @@ function Footer() {
     <footer className="py-12 bg-foreground text-white/70">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <span className="text-white font-bold text-sm">E</span>
-            </div>
-            <span className="font-bold text-white">EDU Platform</span>
+          <div className="flex items-center">
+            <img
+              src="/Neurons-AI-Logo-Wide-900-x-300-px-Transparent.png"
+              alt="NeuronsAI"
+              className="h-8 w-auto brightness-0 invert opacity-90"
+            />
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 text-sm">
@@ -294,7 +296,7 @@ function Footer() {
           </div>
 
           <div className="text-sm">
-            © 2024 EDU Platform. All rights reserved.
+            © 2025 NeuronsAI. All rights reserved.
           </div>
         </div>
       </div>

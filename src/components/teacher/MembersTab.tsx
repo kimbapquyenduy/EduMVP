@@ -24,47 +24,40 @@ interface Teacher {
 }
 
 interface MembersTabProps {
-  classId?: string
-  schoolId?: string
+  classId: string
 }
 
-export function MembersTab({ classId, schoolId }: MembersTabProps) {
+export function MembersTab({ classId }: MembersTabProps) {
   const [members, setMembers] = useState<Member[]>([])
   const [teacher, setTeacher] = useState<Teacher | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const entityId = classId || schoolId
-  const entityType = classId ? 'class_id' : 'school_id'
-
   useEffect(() => {
     loadMembers()
-  }, [entityId])
+  }, [classId])
 
   const loadMembers = async () => {
-    if (!entityId) return
     const supabase = createClient()
 
-    // Fetch teacher info from class (only if classId provided)
-    if (classId) {
-      const { data: classData } = await supabase
-        .from('classes')
-        .select(`
-          created_at,
-          profiles:teacher_id (
-            full_name,
-            email
-          )
-        `)
-        .eq('id', classId)
-        .single()
+    // Fetch teacher info from class
+    const { data: classData } = await supabase
+      .from('classes')
+      .select(`
+        created_at,
+        profiles:teacher_id (
+          full_name,
+          email
+        )
+      `)
+      .eq('id', classId)
+      .single()
 
-      if (classData?.profiles) {
-        setTeacher({
-          full_name: (classData.profiles as any).full_name,
-          email: (classData.profiles as any).email,
-          created_at: classData.created_at,
-        })
-      }
+    if (classData?.profiles) {
+      setTeacher({
+        full_name: (classData.profiles as any).full_name,
+        email: (classData.profiles as any).email,
+        created_at: classData.created_at,
+      })
     }
 
     // Fetch members
@@ -79,7 +72,7 @@ export function MembersTab({ classId, schoolId }: MembersTabProps) {
           email
         )
       `)
-      .eq(entityType, entityId)
+      .eq('class_id', classId)
       .order('joined_at', { ascending: false })
 
     if (!error && data) {

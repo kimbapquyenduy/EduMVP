@@ -42,7 +42,7 @@ export default async function StudentClassPage({
 
   if (!membership) redirect('/student/dashboard')
 
-  // Get class data
+  // Get class data with denormalized counts (bypasses RLS visibility issue)
   const { data: classData } = await supabase
     .from('classes')
     .select('*')
@@ -50,17 +50,6 @@ export default async function StudentClassPage({
     .single()
 
   if (!classData) redirect('/student/dashboard')
-
-  // Get counts
-  const { count: memberCount } = await supabase
-    .from('memberships')
-    .select('*', { count: 'exact', head: true })
-    .eq('class_id', classId)
-
-  const { count: courseCount } = await supabase
-    .from('courses')
-    .select('*', { count: 'exact', head: true })
-    .eq('class_id', classId)
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -92,9 +81,9 @@ export default async function StudentClassPage({
                 {classData.description || 'No description'}
               </p>
               <div className="flex gap-4 mt-3 text-sm text-muted-foreground">
-                <span>{memberCount || 0} members</span>
+                <span>{classData.member_count || 0} members</span>
                 <span>•</span>
-                <span>{courseCount || 0} courses</span>
+                <span>{classData.course_count || 0} courses</span>
               </div>
             </div>
           </div>
