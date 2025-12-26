@@ -11,7 +11,7 @@ export interface UserClass {
 
 // Type for Supabase join result
 interface MembershipWithClass {
-  classes: { id: string; name: string } | null
+  classes: { id: string; name: string } | { id: string; name: string }[] | null
 }
 
 /**
@@ -54,11 +54,14 @@ export function useUserClasses(userId: string) {
           ...(teacherClasses?.map(c => ({ ...c, role: 'teacher' as const })) || []),
           ...((studentClasses as MembershipWithClass[] | null)
             ?.filter(m => m.classes)
-            .map(m => ({
-              id: m.classes!.id,
-              name: m.classes!.name,
-              role: 'student' as const
-            })) || [])
+            .map(m => {
+              const cls = Array.isArray(m.classes) ? m.classes[0] : m.classes!
+              return {
+                id: cls.id,
+                name: cls.name,
+                role: 'student' as const
+              }
+            }) || [])
         ]
 
         setClasses(all)

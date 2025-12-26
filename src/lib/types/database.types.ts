@@ -58,6 +58,9 @@ export interface Course {
   tier: CourseTier
   order_index: number
   thumbnail_url: string | null
+  video_url: string | null
+  pdf_url: string | null
+  promo_video_url: string | null
   created_at: string
   updated_at: string
 }
@@ -241,4 +244,17 @@ export interface ClassWithTiers extends Class {
 
 export interface MemberWithTier extends Membership {
   tier_purchase?: TierPurchaseWithTier
+}
+
+// Legacy School type (schools table - separate from classes)
+export interface School {
+  id: string
+  teacher_id: string
+  name: string
+  description: string | null
+  price: number
+  cover_image: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }

@@ -73,7 +73,7 @@ export default async function CourseViewerPage({
             </TabsList>
 
             <TabsContent value="manage" className="mt-6">
-              <LessonsManagement courseId={courseId} />
+              <LessonsManagement courseId={courseId} classId={classId} />
             </TabsContent>
 
             <TabsContent value="preview" className="mt-0 -mx-4">

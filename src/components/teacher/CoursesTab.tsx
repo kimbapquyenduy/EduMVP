@@ -13,14 +13,17 @@ import { useToast } from '@/hooks/use-toast'
 import Link from 'next/link'
 
 interface CoursesTabProps {
-  classId: string
+  classId?: string
+  schoolId?: string
 }
 
 interface CourseWithLessonCount extends Course {
   lesson_count?: number
 }
 
-export function CoursesTab({ classId }: CoursesTabProps) {
+export function CoursesTab({ classId, schoolId }: CoursesTabProps) {
+  const entityId = classId || schoolId
+  const entityType = classId ? 'class_id' : 'school_id'
   const [courses, setCourses] = useState<CourseWithLessonCount[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -28,16 +31,17 @@ export function CoursesTab({ classId }: CoursesTabProps) {
 
   useEffect(() => {
     loadCourses()
-  }, [classId])
+  }, [entityId])
 
   const loadCourses = async () => {
+    if (!entityId) return
     const supabase = createClient()
 
     // Get courses
     const { data: coursesData, error: coursesError } = await supabase
       .from('courses')
       .select('*')
-      .eq('class_id', classId)
+      .eq(entityType, entityId)
       .order('order_index', { ascending: true })
 
     if (coursesError || !coursesData) {
@@ -112,13 +116,13 @@ export function CoursesTab({ classId }: CoursesTabProps) {
         <h2 className="text-xl font-semibold">
           {courses.length} Course{courses.length !== 1 ? 's' : ''}
         </h2>
-        <CreateCourseDialog classId={classId} />
+        {classId && <CreateCourseDialog classId={classId} />}
       </div>
 
       {courses.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course, index) => (
-            <Link key={course.id} href={`/teacher/classes/${classId}/courses/${course.id}`}>
+            <Link key={course.id} href={classId ? `/teacher/classes/${classId}/courses/${course.id}` : `/teacher/schools/${schoolId}/courses/${course.id}`}>
               <Card className="hover:shadow-lg transition-all hover:scale-[1.02] group overflow-hidden h-full cursor-pointer">
                 {/* Thumbnail Image */}
                 {course.thumbnail_url ? (
@@ -212,7 +216,7 @@ export function CoursesTab({ classId }: CoursesTabProps) {
             <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
               Add your first course to start teaching. You can upload videos or PDF documents.
             </p>
-            <CreateCourseDialog classId={classId} />
+            {classId && <CreateCourseDialog classId={classId} />}
           </CardContent>
         </Card>
       )}

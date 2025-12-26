@@ -60,17 +60,13 @@ export function PDFUpload({ onUploadComplete, currentUrl }: PDFUploadProps) {
       const fileName = `${user.id}/${Date.now()}.pdf`
 
       // Upload to Supabase Storage
+      // Note: Supabase JS client doesn't support progress tracking
+      setProgress(50) // Show progress as "in progress"
       const { data, error } = await supabase.storage
         .from('course-pdfs')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false,
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / (progressEvent.total || 1)
-            )
-            setProgress(percentCompleted)
-          },
         })
 
       if (error) throw error

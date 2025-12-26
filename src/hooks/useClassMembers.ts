@@ -19,11 +19,11 @@ interface ProfileData {
 
 interface ClassWithTeacher {
   teacher_id: string
-  profiles: ProfileData | null
+  profiles: ProfileData | ProfileData[] | null
 }
 
 interface MembershipWithProfile {
-  profiles: ProfileData | null
+  profiles: ProfileData | ProfileData[] | null
 }
 
 /**
@@ -76,22 +76,29 @@ export function useClassMembers(classId: string | null, currentUserId: string) {
         const typedStudentData = studentData as MembershipWithProfile[] | null
 
         // Add teacher (if not current user)
-        if (typedClassData?.profiles && typedClassData.profiles.id !== currentUserId) {
+        // Handle both single object and array cases from Supabase join
+        const teacherProfile = typedClassData?.profiles
+          ? (Array.isArray(typedClassData.profiles) ? typedClassData.profiles[0] : typedClassData.profiles)
+          : null
+        if (teacherProfile && teacherProfile.id !== currentUserId) {
           all.push({
-            id: typedClassData.profiles.id,
-            full_name: typedClassData.profiles.full_name,
-            email: typedClassData.profiles.email,
+            id: teacherProfile.id,
+            full_name: teacherProfile.full_name,
+            email: teacherProfile.email,
             role: 'teacher'
           })
         }
 
         // Add students (exclude current user)
         typedStudentData?.forEach(m => {
-          if (m.profiles && m.profiles.id !== currentUserId) {
+          const profile = m.profiles
+            ? (Array.isArray(m.profiles) ? m.profiles[0] : m.profiles)
+            : null
+          if (profile && profile.id !== currentUserId) {
             all.push({
-              id: m.profiles.id,
-              full_name: m.profiles.full_name,
-              email: m.profiles.email,
+              id: profile.id,
+              full_name: profile.full_name,
+              email: profile.email,
               role: 'student'
             })
           }
