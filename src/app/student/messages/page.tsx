@@ -28,7 +28,7 @@ export default async function StudentMessagesPage() {
 
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Messages</h1>
-        <MessagingInterface userId={user.id} />
+        <MessagingInterface userId={user.id} userRole={profile.role} />
       </div>
     </div>
   )

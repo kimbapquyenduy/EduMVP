@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { MessageSquare, Send, Loader2, User, Search } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { StartDMDialog } from '@/components/shared/StartDMDialog'
 
 interface Message {
   id: string
@@ -41,9 +42,10 @@ interface Conversation {
 
 interface MessagingInterfaceProps {
   userId: string
+  userRole: string
 }
 
-export function MessagingInterface({ userId }: MessagingInterfaceProps) {
+export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -161,10 +163,13 @@ export function MessagingInterface({ userId }: MessagingInterfaceProps) {
       {/* Conversations List */}
       <Card className="lg:col-span-1 flex flex-col">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Conversations
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Conversations
+            </CardTitle>
+            <StartDMDialog userId={userId} userRole={userRole} />
+          </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-y-auto space-y-2">
           {loading ? (
