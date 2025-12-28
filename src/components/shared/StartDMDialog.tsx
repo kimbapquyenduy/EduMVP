@@ -18,14 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command'
 import { useUserClasses } from '@/hooks/useUserClasses'
 import { useClassMembers } from '@/hooks/useClassMembers'
 import { MessageSquarePlus, Loader2, Users } from 'lucide-react'
@@ -69,59 +61,27 @@ export function StartDMDialog({ userId, userRole }: StartDMDialogProps) {
     setError(null)
 
     try {
-      // Check for existing conversation via RPC function
-      const { data: existing, error: rpcError } = await supabase.rpc('find_existing_dm', {
-        p_class_id: selectedClassId,
-        p_user1_id: userId,
-        p_user2_id: selectedUserId,
-      })
+      // Use atomic RPC function that handles:
+      // 1. Security validation (caller & target are class members)
+      // 2. Existing conversation check (returns existing if found)
+      // 3. Conversation + participants creation in one transaction
+      const { data: conversationId, error: rpcError } = await supabase.rpc(
+        'create_dm_conversation',
+        {
+          p_class_id: selectedClassId,
+          p_target_user_id: selectedUserId,
+        }
+      )
 
       if (rpcError) {
-        console.error('RPC error:', rpcError)
-        setError('Failed to check existing conversations')
+        console.error('Failed to create conversation:', rpcError)
+        setError(rpcError.message || 'Failed to create conversation')
         setCreating(false)
         return
       }
 
-      // If conversation exists, navigate to it
-      if (existing) {
-        router.push(`/${userRole.toLowerCase()}/messages?conversation=${existing}`)
-        setOpen(false)
-        setCreating(false)
-        return
-      }
-
-      // Create new conversation with class_id
-      const { data: conv, error: convError } = await supabase
-        .from('conversations')
-        .insert({ class_id: selectedClassId })
-        .select('id')
-        .single()
-
-      if (convError || !conv) {
-        console.error('Failed to create conversation:', convError)
-        setError('Failed to create conversation')
-        setCreating(false)
-        return
-      }
-
-      // Add both participants
-      const { error: participantsError } = await supabase
-        .from('conversation_participants')
-        .insert([
-          { conversation_id: conv.id, user_id: userId },
-          { conversation_id: conv.id, user_id: selectedUserId },
-        ])
-
-      if (participantsError) {
-        console.error('Failed to add participants:', participantsError)
-        setError('Failed to add participants')
-        setCreating(false)
-        return
-      }
-
-      // Navigate to new conversation
-      router.push(`/${userRole.toLowerCase()}/messages?conversation=${conv.id}`)
+      // Navigate to conversation (new or existing)
+      router.push(`/${userRole.toLowerCase()}/messages?conversation=${conversationId}`)
       setOpen(false)
     } catch (err) {
       console.error('Unexpected error:', err)
@@ -201,29 +161,25 @@ export function StartDMDialog({ userId, userRole }: StartDMDialogProps) {
                   No other members in this class.
                 </div>
               ) : (
-                <Command className="border rounded-md">
-                  <CommandInput placeholder="Search members..." />
-                  <CommandList>
-                    <CommandEmpty>No members found</CommandEmpty>
-                    <CommandGroup>
-                      {members.map((m) => (
-                        <CommandItem
-                          key={m.id}
-                          value={`${m.full_name || ''} ${m.email}`}
-                          onSelect={() => setSelectedUserId(m.id)}
-                          className={selectedUserId === m.id ? 'bg-primary/10' : ''}
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span>{m.full_name || m.email}</span>
-                            <Badge variant="outline" className="text-xs ml-2">
-                              {m.role}
-                            </Badge>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
+                <div className="border rounded-md max-h-48 overflow-y-auto">
+                  {members.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setSelectedUserId(m.id)}
+                      className={`w-full text-left px-3 py-2 hover:bg-muted transition-colors ${
+                        selectedUserId === m.id ? 'bg-primary/10 border-l-2 border-primary' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">{m.full_name || m.email}</span>
+                        <Badge variant="outline" className="text-xs ml-2">
+                          {m.role}
+                        </Badge>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           )}

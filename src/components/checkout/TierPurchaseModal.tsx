@@ -57,12 +57,17 @@ export function TierPurchaseModal({
     setIsLoading(true)
     try {
       const response = await fetch(`/api/tiers/${classId}`)
-      if (!response.ok) throw new Error('Failed to fetch tiers')
       const data = await response.json()
+
+      if (!response.ok) {
+        console.error('API error:', data)
+        throw new Error(data.error || 'Failed to fetch tiers')
+      }
+
       setTiers(data.tiers || [])
     } catch (err) {
       console.error('Error fetching tiers:', err)
-      toast.error('Không thể tải thông tin gói')
+      toast.error(err instanceof Error ? err.message : 'Không thể tải thông tin gói')
     } finally {
       setIsLoading(false)
     }
@@ -153,25 +158,35 @@ export function TierPurchaseModal({
                   <Skeleton key={i} className="h-48 rounded-xl" />
                 ))}
               </div>
-            ) : tiers.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Không có gói nào khả dụng
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {tiers.map((tier) => (
-                  <TierCard
-                    key={tier.id}
-                    tier={tier}
-                    isSelected={selectedTier?.id === tier.id}
-                    isOwned={currentTierLevel === tier.tier_level}
-                    isHighlighted={tier.tier_level === 2}
-                    currentTierLevel={currentTierLevel}
-                    onSelect={handleTierSelect}
-                  />
-                ))}
-              </div>
-            )}
+            ) : (() => {
+              // Filter: only show paid tiers (level > 0) that are enabled
+              const availableTiers = tiers.filter(
+                (t) => t.tier_level > 0 && t.is_enabled
+              )
+              return availableTiers.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Không có gói nào khả dụng
+                </p>
+              ) : (
+                <div className={`grid grid-cols-1 gap-4 ${
+                  availableTiers.length === 1 ? 'sm:grid-cols-1 max-w-sm mx-auto' :
+                  availableTiers.length === 2 ? 'sm:grid-cols-2 max-w-lg mx-auto' :
+                  'sm:grid-cols-3'
+                }`}>
+                  {availableTiers.map((tier) => (
+                    <TierCard
+                      key={tier.id}
+                      tier={tier}
+                      isSelected={selectedTier?.id === tier.id}
+                      isOwned={currentTierLevel === tier.tier_level}
+                      isHighlighted={tier.tier_level === availableTiers.length}
+                      currentTierLevel={currentTierLevel}
+                      onSelect={handleTierSelect}
+                    />
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         )}
 

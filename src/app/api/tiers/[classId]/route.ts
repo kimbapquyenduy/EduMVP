@@ -21,14 +21,43 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .order('tier_level', { ascending: true })
 
     if (error) {
-      throw new Error(`Failed to fetch tiers: ${error.message}`)
+      console.error('Supabase error fetching tiers:', error)
+      return NextResponse.json(
+        { error: `Database error: ${error.message}`, code: error.code },
+        { status: 500 }
+      )
+    }
+
+    // If no tiers found, it might be an old class without tiers - create them
+    if (!tiers || tiers.length === 0) {
+      console.warn(`No tiers found for class ${classId}, creating defaults...`)
+
+      // Create default tiers for this class
+      const defaultTiers = [
+        { class_id: classId, tier_level: 0, name: 'Miễn phí', price: 0, lesson_unlock_count: 0, is_enabled: true },
+        { class_id: classId, tier_level: 1, name: 'Cơ bản', price: 50000, lesson_unlock_count: 5, is_enabled: true },
+        { class_id: classId, tier_level: 2, name: 'Tiêu chuẩn', price: 100000, lesson_unlock_count: 10, is_enabled: true },
+        { class_id: classId, tier_level: 3, name: 'Trọn bộ', price: 200000, lesson_unlock_count: null, is_enabled: true },
+      ]
+
+      const { data: createdTiers, error: insertError } = await supabase
+        .from('subscription_tiers')
+        .insert(defaultTiers)
+        .select()
+
+      if (insertError) {
+        console.error('Error creating default tiers:', insertError)
+        return NextResponse.json({ tiers: [] })
+      }
+
+      return NextResponse.json({ tiers: createdTiers })
     }
 
     return NextResponse.json({ tiers })
   } catch (error) {
     console.error('Get tiers error:', error)
     return NextResponse.json(
-      { error: 'Không thể tải thông tin gói' },
+      { error: error instanceof Error ? error.message : 'Không thể tải thông tin gói' },
       { status: 500 }
     )
   }
@@ -36,7 +65,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 /**
  * PUT /api/tiers/[classId]
- * Update tier prices for a class (teacher only)
+ * Update tier settings for a class (teacher only)
+ * Supports updating price and lesson_unlock_count
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
@@ -72,7 +102,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     if (classData.teacher_id !== user.id) {
       return NextResponse.json(
-        { error: 'Bạn không có quyền chỉnh sửa giá gói' },
+        { error: 'Bạn không có quyền chỉnh sửa cài đặt gói' },
         { status: 403 }
       )
     }
@@ -80,7 +110,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Parse request body
     const body = await request.json()
     const { tiers } = body as {
-      tiers: Array<{ id: string; price: number }>
+      tiers: Array<{
+        id: string
+        price: number
+        lesson_unlock_count: number | null
+        is_enabled: boolean
+      }>
     }
 
     if (!tiers || !Array.isArray(tiers)) {
@@ -90,11 +125,26 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Validate prices
+    // Validate tier data
     for (const tier of tiers) {
       if (typeof tier.price !== 'number' || tier.price < 0) {
         return NextResponse.json(
           { error: 'Giá phải là số không âm' },
+          { status: 400 }
+        )
+      }
+      if (
+        tier.lesson_unlock_count !== null &&
+        (typeof tier.lesson_unlock_count !== 'number' || tier.lesson_unlock_count < 0)
+      ) {
+        return NextResponse.json(
+          { error: 'Số bài mở khóa phải là số không âm hoặc null' },
+          { status: 400 }
+        )
+      }
+      if (typeof tier.is_enabled !== 'boolean') {
+        return NextResponse.json(
+          { error: 'Trạng thái kích hoạt không hợp lệ' },
           { status: 400 }
         )
       }
@@ -104,7 +154,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     for (const tier of tiers) {
       const { error: updateError } = await supabase
         .from('subscription_tiers')
-        .update({ price: tier.price })
+        .update({
+          price: tier.price,
+          lesson_unlock_count: tier.lesson_unlock_count,
+          is_enabled: tier.is_enabled,
+        })
         .eq('id', tier.id)
         .eq('class_id', classId) // Extra safety check
 

@@ -57,6 +57,7 @@ export default async function StudentClassPage({
         userEmail={user.email}
         userName={profile.full_name || undefined}
         userRole={profile.role}
+        userId={user.id}
       />
 
       {/* Header */}

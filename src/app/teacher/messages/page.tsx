@@ -23,6 +23,7 @@ export default async function MessagesPage() {
         userEmail={user.email}
         userName={profile.full_name || undefined}
         userRole={profile.role}
+        userId={user.id}
       />
 
       <div className="container mx-auto p-6">

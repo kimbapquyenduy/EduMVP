@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { EditClassForm } from '@/components/teacher/EditClassForm'
 import { DeleteClassButton } from '@/components/teacher/DeleteClassButton'
+import { TierPricingForm } from '@/components/teacher/TierPricingForm'
 
 export default async function ClassSettingsPage({
   params,
@@ -40,6 +41,7 @@ export default async function ClassSettingsPage({
         userEmail={user.email}
         userName={profile?.full_name || undefined}
         userRole={profile?.role}
+        userId={user.id}
       />
 
       <div className="container mx-auto p-6 max-w-3xl">
@@ -59,6 +61,11 @@ export default async function ClassSettingsPage({
           </div>
 
           <EditClassForm classData={classData} />
+
+          {/* Subscription Tiers Section */}
+          <div className="pt-6">
+            <TierPricingForm classId={classId} />
+          </div>
 
           <div className="pt-8 border-t">
             <h2 className="text-xl font-bold mb-2 text-destructive">Danger Zone</h2>

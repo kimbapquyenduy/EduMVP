@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Lock, Unlock, Loader2, BookOpen } from 'lucide-react'
+import { Lock, Unlock, Loader2, BookOpen, ArrowUp } from 'lucide-react'
 import Link from 'next/link'
+import { TierPurchaseModal } from '@/components/checkout/TierPurchaseModal'
+import { TierPurchase, SubscriptionTier } from '@/lib/types/database.types'
 
 interface Lesson {
   id: string
@@ -44,7 +47,25 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
+  const [tierPurchase, setTierPurchase] = useState<(TierPurchase & { tier: SubscriptionTier }) | null>(null)
   const supabase = createClient()
+
+  // Fetch tier purchase on mount
+  useEffect(() => {
+    const fetchTierPurchase = async () => {
+      const { data } = await supabase
+        .from('tier_purchases')
+        .select('*, tier:subscription_tiers(*)')
+        .eq('user_id', userId)
+        .eq('class_id', classId)
+        .maybeSingle()
+      if (data) {
+        setTierPurchase(data as TierPurchase & { tier: SubscriptionTier })
+      }
+    }
+    fetchTierPurchase()
+  }, [classId, userId, supabase])
 
   useEffect(() => {
     loadCourses()
@@ -210,7 +231,10 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
                   </Card>
                 </Link>
               ) : (
-                <Card className="overflow-hidden h-full opacity-75">
+                <Card
+                  className="overflow-hidden h-full opacity-75 hover:opacity-100 cursor-pointer transition-all hover:shadow-lg"
+                  onClick={() => setIsUpgradeModalOpen(true)}
+                >
                   {/* Thumbnail Image with Lock Overlay */}
                   <div className="aspect-video w-full bg-muted overflow-hidden relative">
                     {course.thumbnail_url ? (
@@ -257,9 +281,17 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
                       </Badge>
                     </div>
 
-                    <p className="text-xs text-center text-muted-foreground py-2 bg-muted/50 rounded">
-                      Upgrade to Premium to access
-                    </p>
+                    <Button
+                      size="sm"
+                      className="w-full gap-2 bg-amber-600 hover:bg-amber-700"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setIsUpgradeModalOpen(true)
+                      }}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                      Nâng cấp để mở khóa
+                    </Button>
                   </CardContent>
                 </Card>
               )}
@@ -267,6 +299,20 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
           )
         })}
       </div>
+
+      {/* Tier Purchase Modal */}
+      <TierPurchaseModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        classId={classId}
+        currentTierPurchase={tierPurchase}
+        onSuccess={(purchase) => {
+          setTierPurchase({ ...purchase, tier: tierPurchase?.tier } as TierPurchase & { tier: SubscriptionTier })
+          setIsUpgradeModalOpen(false)
+          // Reload page to update access
+          window.location.reload()
+        }}
+      />
     </div>
   )
 }

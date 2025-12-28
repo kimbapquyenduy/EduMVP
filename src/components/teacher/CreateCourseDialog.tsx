@@ -31,9 +31,10 @@ import { ImageUpload } from './ImageUpload'
 
 interface CreateCourseDialogProps {
   classId: string
+  onCourseCreated?: () => void
 }
 
-export function CreateCourseDialog({ classId }: CreateCourseDialogProps) {
+export function CreateCourseDialog({ classId, onCourseCreated }: CreateCourseDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [promoVideoUrl, setPromoVideoUrl] = useState('')
@@ -77,6 +78,7 @@ export function CreateCourseDialog({ classId }: CreateCourseDialogProps) {
       setOpen(false)
       setPromoVideoUrl('')
       setThumbnailImageUrl('')
+      onCourseCreated?.()
       router.refresh()
     }
 

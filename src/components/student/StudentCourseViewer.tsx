@@ -5,7 +5,11 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { PlayCircle, FileText, Download, ExternalLink, Check, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react'
+import { PlayCircle, FileText, Download, ExternalLink, Check, ChevronDown, ChevronUp, CheckCircle, Lock } from 'lucide-react'
+import { UnlockPrompt } from '@/components/shared/UnlockPrompt'
+import { TierPurchaseModal } from '@/components/checkout/TierPurchaseModal'
+import { getLessonAccessStatus, getAccessibleLessonCount, TierPurchaseWithTier } from '@/lib/utils/lesson-access'
+import { TierPurchase, SubscriptionTier } from '@/lib/types/database.types'
 
 interface Lesson {
   id: string
@@ -23,14 +27,28 @@ interface StudentCourseViewerProps {
   courseId: string
   courseTitle: string
   userId: string
+  classId: string
+  className?: string
+  tierPurchase?: (TierPurchase & { tier: SubscriptionTier }) | null
+  freeTierLessonCount?: number
 }
 
-export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCourseViewerProps) {
+export function StudentCourseViewer({
+  courseId,
+  courseTitle,
+  userId,
+  classId,
+  className,
+  tierPurchase = null,
+  freeTierLessonCount = 0,
+}: StudentCourseViewerProps) {
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [loading, setLoading] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [markingComplete, setMarkingComplete] = useState(false)
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
+  const [currentTierPurchase, setCurrentTierPurchase] = useState<TierPurchaseWithTier | null>(tierPurchase)
   const supabase = createClient()
 
   const loadLessons = useCallback(async () => {
@@ -59,10 +77,19 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
       )
 
       setLessons(lessonsWithProgress as Lesson[])
-      setSelectedLesson(lessonsWithProgress[0] as Lesson)
+
+      // Find first accessible lesson based on tier
+      const firstAccessibleIndex = lessonsWithProgress.findIndex((_, index) => {
+        const status = getLessonAccessStatus(index, currentTierPurchase, false, freeTierLessonCount)
+        return status === 'unlocked'
+      })
+      const lessonToSelect = firstAccessibleIndex >= 0
+        ? lessonsWithProgress[firstAccessibleIndex]
+        : lessonsWithProgress[0]
+      setSelectedLesson(lessonToSelect as Lesson)
     }
     setLoading(false)
-  }, [courseId, userId, supabase])
+  }, [courseId, userId, supabase, currentTierPurchase, freeTierLessonCount])
 
   useEffect(() => {
     loadLessons()
@@ -137,6 +164,51 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
     [selectedLesson, lessons]
   )
 
+  // Compute lesson access status for each lesson
+  const lessonAccessMap = useMemo(() => {
+    return lessons.map((_, index) =>
+      getLessonAccessStatus(index, currentTierPurchase, false, freeTierLessonCount)
+    )
+  }, [lessons, currentTierPurchase, freeTierLessonCount])
+
+  // Calculate accessible lesson count
+  const accessibleCount = useMemo(() => {
+    return getAccessibleLessonCount(lessons.length, currentTierPurchase, false, freeTierLessonCount)
+  }, [lessons.length, currentTierPurchase, freeTierLessonCount])
+
+  // Check if selected lesson is locked
+  const isSelectedLessonLocked = useMemo(() => {
+    if (currentLessonIndex === -1) return false
+    return lessonAccessMap[currentLessonIndex] === 'locked'
+  }, [currentLessonIndex, lessonAccessMap])
+
+  // Handle lesson selection with access check
+  const handleLessonSelect = (lesson: Lesson, index: number) => {
+    if (lessonAccessMap[index] === 'locked') {
+      setIsUpgradeModalOpen(true)
+    } else {
+      setSelectedLesson(lesson)
+    }
+  }
+
+  // Handle successful tier purchase
+  const handleUpgradeSuccess = (purchase: TierPurchase) => {
+    // Refetch tier purchase to get updated access
+    supabase
+      .from('tier_purchases')
+      .select('*, tier:subscription_tiers(*)')
+      .eq('id', purchase.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setCurrentTierPurchase(data as TierPurchaseWithTier)
+        }
+      })
+    setIsUpgradeModalOpen(false)
+  }
+
+  const hasLockedLessons = accessibleCount < lessons.length
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -166,6 +238,17 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
         {/* Lessons Sidebar */}
         <div className={`${sidebarCollapsed ? 'w-0' : 'w-80 lg:w-96'} transition-all duration-300 border-r bg-background overflow-hidden flex-shrink-0`}>
           <div className="h-full overflow-y-auto pr-4 py-4 space-y-4">
+            {/* Unlock Prompt - Show if there are locked lessons */}
+            {hasLockedLessons && (
+              <UnlockPrompt
+                classId={classId}
+                currentTier={currentTierPurchase}
+                accessibleCount={accessibleCount}
+                totalCount={lessons.length}
+                onUpgrade={() => setIsUpgradeModalOpen(true)}
+              />
+            )}
+
             {/* Course Progress - Teal gradient card */}
             <Card className="clay-card border-0 bg-gradient-to-r from-primary/5 to-secondary/5 transition-smooth">
               <CardContent className="p-4 space-y-3">
@@ -182,50 +265,61 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
 
           {/* Lessons List */}
           <div className="space-y-1">
-            {lessons.map((lesson, index) => (
-              <button
-                key={lesson.id}
-                onClick={() => setSelectedLesson(lesson)}
-                className={`w-full text-left p-3 rounded-lg transition-smooth ${
-                  selectedLesson?.id === lesson.id
-                    ? 'bg-primary/10 border-l-4 border-primary shadow-sm'
-                    : 'hover:bg-primary/5 hover:border-l-4 hover:border-primary/30'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5">
-                    {lesson.is_completed ? (
-                      <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm shadow-green-500/30">
-                        <Check className="h-3 w-3 text-white" />
-                      </div>
-                    ) : selectedLesson?.id === lesson.id ? (
-                      <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm shadow-primary/30">
-                        <span className="text-xs text-white font-medium">{index + 1}</span>
-                      </div>
-                    ) : (
-                      <div className="h-5 w-5 rounded-full border-2 border-primary/30 flex items-center justify-center">
-                        <span className="text-xs text-muted-foreground">{index + 1}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium line-clamp-2 ${
-                      selectedLesson?.id === lesson.id ? 'text-primary' : ''
-                    }`}>
-                      {lesson.title}
-                    </p>
-                    {lesson.duration_minutes && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDuration(lesson.duration_minutes)}
+            {lessons.map((lesson, index) => {
+              const isLocked = lessonAccessMap[index] === 'locked'
+              return (
+                <button
+                  key={lesson.id}
+                  onClick={() => handleLessonSelect(lesson, index)}
+                  className={`w-full text-left p-3 rounded-lg transition-smooth ${
+                    isLocked
+                      ? 'opacity-60 hover:opacity-80'
+                      : selectedLesson?.id === lesson.id
+                        ? 'bg-primary/10 border-l-4 border-primary shadow-sm'
+                        : 'hover:bg-primary/5 hover:border-l-4 hover:border-primary/30'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5">
+                      {isLocked ? (
+                        <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center">
+                          <Lock className="h-3 w-3 text-muted-foreground" />
+                        </div>
+                      ) : lesson.is_completed ? (
+                        <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center shadow-sm shadow-green-500/30">
+                          <Check className="h-3 w-3 text-white" />
+                        </div>
+                      ) : selectedLesson?.id === lesson.id ? (
+                        <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center shadow-sm shadow-primary/30">
+                          <span className="text-xs text-white font-medium">{index + 1}</span>
+                        </div>
+                      ) : (
+                        <div className="h-5 w-5 rounded-full border-2 border-primary/30 flex items-center justify-center">
+                          <span className="text-xs text-muted-foreground">{index + 1}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium line-clamp-2 ${
+                        isLocked ? 'text-muted-foreground' : selectedLesson?.id === lesson.id ? 'text-primary' : ''
+                      }`}>
+                        {lesson.title}
                       </p>
-                    )}
+                      {lesson.duration_minutes && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDuration(lesson.duration_minutes)}
+                        </p>
+                      )}
+                    </div>
+                    {isLocked ? (
+                      <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    ) : lesson.video_url ? (
+                      <PlayCircle className={`h-4 w-4 flex-shrink-0 ${selectedLesson?.id === lesson.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                    ) : null}
                   </div>
-                  {lesson.video_url && (
-                    <PlayCircle className={`h-4 w-4 flex-shrink-0 ${selectedLesson?.id === lesson.id ? 'text-primary' : 'text-muted-foreground'}`} />
-                  )}
-                </div>
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
 
           {lessons.length === 0 && (
@@ -352,19 +446,29 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
               <div className="flex justify-between pt-6 border-t border-primary/10">
                 <Button
                   variant="outline"
-                  onClick={() => currentLessonIndex > 0 && setSelectedLesson(lessons[currentLessonIndex - 1])}
+                  onClick={() => currentLessonIndex > 0 && handleLessonSelect(lessons[currentLessonIndex - 1], currentLessonIndex - 1)}
                   disabled={currentLessonIndex === 0}
                   className="border-primary/30 hover:bg-primary/10 hover:text-primary hover:border-primary transition-smooth disabled:opacity-50"
                 >
                   Previous Lesson
                 </Button>
-                <Button
-                  onClick={() => currentLessonIndex < lessons.length - 1 && setSelectedLesson(lessons[currentLessonIndex + 1])}
-                  disabled={currentLessonIndex === lessons.length - 1}
-                  className="bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 transition-smooth disabled:opacity-50"
-                >
-                  Next Lesson
-                </Button>
+                {currentLessonIndex < lessons.length - 1 && lessonAccessMap[currentLessonIndex + 1] === 'locked' ? (
+                  <Button
+                    onClick={() => setIsUpgradeModalOpen(true)}
+                    className="bg-amber-600 hover:bg-amber-700 shadow-sm shadow-amber-500/20 transition-smooth gap-2"
+                  >
+                    <Lock className="h-4 w-4" />
+                    Nâng cấp để tiếp tục
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => currentLessonIndex < lessons.length - 1 && handleLessonSelect(lessons[currentLessonIndex + 1], currentLessonIndex + 1)}
+                    disabled={currentLessonIndex === lessons.length - 1}
+                    className="bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 transition-smooth disabled:opacity-50"
+                  >
+                    Next Lesson
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -388,6 +492,16 @@ export function StudentCourseViewer({ courseId, courseTitle, userId }: StudentCo
           {sidebarCollapsed ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
         </button>
       </div>
+
+      {/* Tier Purchase Modal */}
+      <TierPurchaseModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        classId={classId}
+        className={className}
+        currentTierPurchase={currentTierPurchase}
+        onSuccess={handleUpgradeSuccess}
+      />
     </div>
   )
 }

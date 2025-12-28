@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
@@ -20,6 +20,8 @@ export function useConversationUpdates({
 }: UseConversationUpdatesOptions) {
   const channelRef = useRef<RealtimeChannel | null>(null)
   const supabaseRef = useRef(createClient())
+  const retryCountRef = useRef(0)
+  const maxRetries = 3
 
   // Stable callback ref
   const onNewMessageRef = useRef(onNewMessage)
@@ -27,7 +29,7 @@ export function useConversationUpdates({
     onNewMessageRef.current = onNewMessage
   }, [onNewMessage])
 
-  useEffect(() => {
+  const setupChannel = useCallback(() => {
     if (!userId) return
 
     const supabase = supabaseRef.current
@@ -38,8 +40,11 @@ export function useConversationUpdates({
       channelRef.current = null
     }
 
+    // Use unique channel name to avoid conflicts
+    const channelName = `user-conversations-${userId}-${Date.now()}`
+
     const channel = supabase
-      .channel(`user-conversations:${userId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -63,17 +68,28 @@ export function useConversationUpdates({
       )
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR') {
-          console.error('[useConversationUpdates] Channel error for user:', userId)
+          // Retry with exponential backoff
+          if (retryCountRef.current < maxRetries) {
+            retryCountRef.current++
+            const delay = Math.pow(2, retryCountRef.current) * 1000
+            setTimeout(setupChannel, delay)
+          }
+        } else if (status === 'SUBSCRIBED') {
+          retryCountRef.current = 0
         }
       })
 
     channelRef.current = channel
+  }, [userId])
+
+  useEffect(() => {
+    setupChannel()
 
     return () => {
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
+        supabaseRef.current.removeChannel(channelRef.current)
         channelRef.current = null
       }
     }
-  }, [userId])
+  }, [setupChannel])
 }

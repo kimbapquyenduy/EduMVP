@@ -38,6 +38,7 @@ export default async function TeacherDashboard() {
         userEmail={user.email}
         userName={profile?.full_name || undefined}
         userRole={profile?.role}
+        userId={user.id}
       />
 
       {/* Header */}

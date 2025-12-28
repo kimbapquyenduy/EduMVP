@@ -51,11 +51,23 @@ export default async function StudentCourseViewerPage({
 
   if (!course) redirect(`/student/classes/${classId}`)
 
-  // Check if student can access this course
-  const canAccess = course.tier === 'FREE' || membership.status === 'PREMIUM'
-  if (!canAccess) {
-    redirect(`/student/classes/${classId}`)
-  }
+  // Fetch student's tier purchase for this class (may not exist yet)
+  const { data: tierPurchase } = await supabase
+    .from('tier_purchases')
+    .select('*, tier:subscription_tiers(*)')
+    .eq('user_id', user.id)
+    .eq('class_id', classId)
+    .maybeSingle()
+
+  // Fetch free tier lesson count
+  const { data: freeTier } = await supabase
+    .from('subscription_tiers')
+    .select('lesson_unlock_count')
+    .eq('class_id', classId)
+    .eq('tier_level', 0)
+    .single()
+
+  const freeTierLessonCount = freeTier?.lesson_unlock_count ?? 0
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -63,6 +75,7 @@ export default async function StudentCourseViewerPage({
         userEmail={user.email}
         userName={profile?.full_name || undefined}
         userRole={profile?.role}
+        userId={user.id}
       />
 
       {/* Back Button */}
@@ -82,6 +95,10 @@ export default async function StudentCourseViewerPage({
         courseId={courseId}
         courseTitle={course.title}
         userId={user.id}
+        classId={classId}
+        className={course.class.name}
+        tierPurchase={tierPurchase}
+        freeTierLessonCount={freeTierLessonCount}
       />
     </div>
   )

@@ -13,17 +13,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Settings, Loader2, MessageSquare } from 'lucide-react'
+import { LogOut, User, Settings, Loader2, MessageSquare, Bell } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
+import { ChatDropdown } from './ChatDropdown'
 
 interface AppHeaderProps {
   userEmail?: string
   userName?: string
   userRole?: 'TEACHER' | 'STUDENT'
+  userId?: string
 }
 
-export function AppHeader({ userEmail, userName, userRole }: AppHeaderProps) {
+export function AppHeader({ userEmail, userName, userRole, userId }: AppHeaderProps) {
   const [loggingOut, setLoggingOut] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -71,13 +73,28 @@ export function AppHeader({ userEmail, userName, userRole }: AppHeaderProps) {
           />
         </Link>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {userRole && (
-            <div className="hidden sm:block">
+            <div className="hidden sm:block mr-2">
               <div className="text-xs text-muted-foreground">Role</div>
               <div className="text-sm font-medium capitalize">{userRole.toLowerCase()}</div>
             </div>
           )}
+
+          {/* Chat Dropdown - Skool style */}
+          {userId && userRole && (
+            <ChatDropdown userId={userId} userRole={userRole} />
+          )}
+
+          {/* Notifications Bell */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative h-10 w-10 rounded-full hover:bg-muted"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5 text-muted-foreground" />
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

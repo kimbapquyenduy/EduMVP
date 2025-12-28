@@ -112,7 +112,7 @@ export function CoursesTab({ classId }: CoursesTabProps) {
         <h2 className="text-xl font-semibold">
           {courses.length} Course{courses.length !== 1 ? 's' : ''}
         </h2>
-        <CreateCourseDialog classId={classId} />
+        <CreateCourseDialog classId={classId} onCourseCreated={loadCourses} />
       </div>
 
       {courses.length > 0 ? (
@@ -212,7 +212,7 @@ export function CoursesTab({ classId }: CoursesTabProps) {
             <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
               Add your first course to start teaching. You can upload videos or PDF documents.
             </p>
-            <CreateCourseDialog classId={classId} />
+            <CreateCourseDialog classId={classId} onCourseCreated={loadCourses} />
           </CardContent>
         </Card>
       )}

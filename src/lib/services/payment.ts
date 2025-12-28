@@ -266,12 +266,9 @@ export async function getUserTierPurchase(userId: string, classId: string) {
     `)
     .eq('user_id', userId)
     .eq('class_id', classId)
-    .single()
+    .maybeSingle()
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return null
-    }
     throw new Error(`Failed to get tier purchase: ${error.message}`)
   }
 

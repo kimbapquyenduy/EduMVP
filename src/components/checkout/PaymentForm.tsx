@@ -13,6 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { Label } from '@/components/ui/label'
 import { Loader2, CreditCard } from 'lucide-react'
 import {
   cardDetailsSchema,
@@ -134,22 +135,20 @@ export function PaymentForm({ onSubmit, isLoading, tierName, price }: PaymentFor
           />
 
           <div className="grid grid-cols-2 gap-4">
-            <FormItem>
-              <FormLabel>Ngày hết hạn</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="MM/YY"
-                  maxLength={5}
-                  onChange={handleExpiryChange}
-                  disabled={isLoading}
-                />
-              </FormControl>
+            <div className="space-y-2">
+              <Label>Ngày hết hạn</Label>
+              <Input
+                placeholder="MM/YY"
+                maxLength={5}
+                onChange={handleExpiryChange}
+                disabled={isLoading}
+              />
               {(form.formState.errors.expMonth || form.formState.errors.expYear) && (
-                <p className="text-sm font-medium text-destructive">
+                <p className="text-[0.8rem] font-medium text-destructive">
                   {form.formState.errors.expMonth?.message || form.formState.errors.expYear?.message}
                 </p>
               )}
-            </FormItem>
+            </div>
 
             <FormField
               control={form.control}

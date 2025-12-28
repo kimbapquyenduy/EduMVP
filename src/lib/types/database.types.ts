@@ -218,10 +218,11 @@ export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed'
 export interface SubscriptionTier {
   id: string
   class_id: string
-  tier_level: 1 | 2 | 3
+  tier_level: 0 | 1 | 2 | 3 // 0=Free, 1=Basic, 2=Standard, 3=Premium
   name: string
   price: number // VND integer
   lesson_unlock_count: number | null // NULL = unlimited
+  is_enabled: boolean // Tier 0 always true, others configurable by teacher
   created_at: string
   updated_at: string
 }

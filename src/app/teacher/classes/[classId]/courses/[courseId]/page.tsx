@@ -48,6 +48,7 @@ export default async function CourseViewerPage({
         userEmail={user.email}
         userName={profile?.full_name || undefined}
         userRole={profile?.role}
+        userId={user.id}
       />
 
       {/* Header with Back Button and Tabs */}
