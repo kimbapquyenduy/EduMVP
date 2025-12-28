@@ -96,6 +96,7 @@ export const DEFAULT_TIER_CONFIG = {
 } as const
 
 /**
- * Free lesson count for members without tier purchase
+ * Free lesson count for members without tier purchase.
+ * Set to 0 - users must complete missions or buy tiers to unlock lessons.
  */
-export const FREE_LESSON_COUNT = 3
+export const FREE_LESSON_COUNT = 0

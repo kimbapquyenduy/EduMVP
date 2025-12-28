@@ -29,10 +29,29 @@ export interface Class {
   name: string
   description: string | null
   price: number
+  subscription_price: number // Monthly fee in VND (0 = free)
   thumbnail_url: string | null
   is_published: boolean
   created_at: string
   updated_at: string
+}
+
+// ============================================
+// CLASS SUBSCRIPTION
+// ============================================
+export type SubscriptionStatus = 'active' | 'expired' | 'cancelled'
+
+export interface ClassSubscription {
+  id: string
+  user_id: string
+  class_id: string
+  payment_id: string | null
+  amount: number
+  currency: string
+  status: SubscriptionStatus
+  starts_at: string
+  expires_at: string
+  created_at: string
 }
 
 // ============================================
