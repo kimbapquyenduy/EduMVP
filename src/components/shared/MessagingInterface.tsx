@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { MessageSquare, Send, Loader2, User, Search } from 'lucide-react'
+import { MessageSquare, Send, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { StartDMDialog } from '@/components/shared/StartDMDialog'
+import { useRealtimeMessages } from '@/hooks/useRealtimeMessages'
+import { useConversationUpdates } from '@/hooks/useConversationUpdates'
 
 interface Message {
   id: string
@@ -54,6 +55,35 @@ export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps
   const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
+
+  // Realtime message handler - add new messages without duplicates
+  const handleNewMessage = useCallback((message: Message) => {
+    setMessages(prev => {
+      if (prev.some(m => m.id === message.id)) return prev
+      return [...prev, message]
+    })
+    // Auto-scroll after state update
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+  }, [])
+
+  // Realtime conversation list refresh
+  const handleConversationUpdate = useCallback(() => {
+    loadConversations()
+  }, [])
+
+  // Subscribe to active conversation messages
+  useRealtimeMessages({
+    conversationId: selectedConversation?.id || null,
+    onNewMessage: handleNewMessage
+  })
+
+  // Subscribe to all user's conversations for sidebar updates
+  useConversationUpdates({
+    userId,
+    onNewMessage: handleConversationUpdate
+  })
 
   useEffect(() => {
     loadConversations()
@@ -133,8 +163,7 @@ export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps
 
     if (!error) {
       setNewMessage('')
-      loadMessages(selectedConversation.id)
-      loadConversations()
+      // Realtime subscription handles message display and conversation list update
     }
     setSending(false)
   }
