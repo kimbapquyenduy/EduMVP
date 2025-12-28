@@ -1,7 +1,7 @@
 # Class-Restricted Direct Messaging - Implementation Plan
 
 **Created**: 2025-12-26
-**Status**: Phase 1 Complete
+**Status**: Complete
 **Priority**: High
 
 ---
@@ -26,8 +26,8 @@ Add class-scoped DM capability. Users can only message members of shared classes
 | Phase | File | Priority | Status | Progress |
 |-------|------|----------|--------|----------|
 | 1 | [phase-01-database-schema.md](./phase-01-database-schema.md) | Critical | DONE | 100% |
-| 2 | [phase-02-ui-components.md](./phase-02-ui-components.md) | High | Pending | 0% |
-| 3 | [phase-03-realtime-messaging.md](./phase-03-realtime-messaging.md) | Medium | Blocked | 0% |
+| 2 | [phase-02-ui-components.md](./phase-02-ui-components.md) | High | DONE | 100% |
+| 3 | [phase-03-realtime-messaging.md](./phase-03-realtime-messaging.md) | Medium | DONE | 100% |
 
 **Dependencies**: Phase 2 requires Phase 1. Phase 3 requires Phase 2.
 
