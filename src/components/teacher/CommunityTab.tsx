@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MessageSquare, Heart, Pin, Send, Loader2 } from 'lucide-react'
+import { PostComments } from '@/components/community/PostComments'
+import { sanitizeUserContent } from '@/lib/utils/sanitize'
 
 interface Post {
   id: string
@@ -35,6 +37,8 @@ interface CommunityTabProps {
   classId: string
 }
 
+const MAX_POST_LENGTH = 10000
+
 export function CommunityTab({ classId }: CommunityTabProps) {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,6 +47,7 @@ export function CommunityTab({ classId }: CommunityTabProps) {
   const [newPostCategory, setNewPostCategory] = useState<Post['category']>('DISCUSSION')
   const [filterCategory, setFilterCategory] = useState<string>('ALL')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [expandedPostId, setExpandedPostId] = useState<string | null>(null)
   const supabase = createClient()
 
   // Debounce ref to prevent rapid reaction toggling
@@ -165,6 +170,22 @@ export function CommunityTab({ classId }: CommunityTabProps) {
     }, 300)
   }, [currentUserId, supabase])
 
+  // Toggle comment expansion
+  const toggleComments = (postId: string) => {
+    setExpandedPostId(prev => prev === postId ? null : postId)
+  }
+
+  // Increment comment count for a post (called when comment added)
+  const incrementCommentCount = (postId: string) => {
+    setPosts(prev => prev.map(post => {
+      if (post.id !== postId) return post
+      return {
+        ...post,
+        comments: [...post.comments, { id: 'temp' }],
+      }
+    }))
+  }
+
   const getCategoryColor = (category: Post['category']) => {
     switch (category) {
       case 'ANNOUNCEMENT':
@@ -191,8 +212,13 @@ export function CommunityTab({ classId }: CommunityTabProps) {
               <Textarea
                 placeholder="Write something to your class..."
                 value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= MAX_POST_LENGTH) {
+                    setNewPostContent(e.target.value)
+                  }
+                }}
                 rows={3}
+                maxLength={MAX_POST_LENGTH}
                 className="resize-none"
               />
             </div>
@@ -298,7 +324,7 @@ export function CommunityTab({ classId }: CommunityTabProps) {
                   <h3 className="font-semibold text-lg mb-2">{post.title}</h3>
                 )}
                 <p className="text-muted-foreground whitespace-pre-wrap mb-4">
-                  {post.content}
+                  {sanitizeUserContent(post.content)}
                 </p>
 
                 {/* Post Actions */}
@@ -314,11 +340,25 @@ export function CommunityTab({ classId }: CommunityTabProps) {
                     />
                     {post.reaction_count}
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleComments(post.id)}
+                    className={expandedPostId === post.id ? 'bg-muted' : ''}
+                  >
                     <MessageSquare className="mr-2 h-4 w-4" />
                     {post.comments.length}
                   </Button>
                 </div>
+
+                {/* Comments Section (Expanded) */}
+                {expandedPostId === post.id && currentUserId && (
+                  <PostComments
+                    postId={post.id}
+                    currentUserId={currentUserId}
+                    onCommentAdded={() => incrementCommentCount(post.id)}
+                  />
+                )}
               </CardContent>
             </Card>
           ))}
