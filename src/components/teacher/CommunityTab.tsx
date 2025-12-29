@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MessageSquare, Heart, Pin, Send, Loader2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 
 interface Post {
   id: string
@@ -25,8 +24,11 @@ interface Post {
     email: string
     role: string
   }
-  post_reactions: Array<{ id: string }>
+  post_reactions: Array<{ id: string; user_id: string }>
   comments: Array<{ id: string }>
+  // Computed fields for current user
+  has_liked: boolean
+  reaction_count: number
 }
 
 interface CommunityTabProps {
@@ -40,21 +42,42 @@ export function CommunityTab({ classId }: CommunityTabProps) {
   const [newPostContent, setNewPostContent] = useState('')
   const [newPostCategory, setNewPostCategory] = useState<Post['category']>('DISCUSSION')
   const [filterCategory, setFilterCategory] = useState<string>('ALL')
-  const router = useRouter()
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const supabase = createClient()
 
+  // Debounce ref to prevent rapid reaction toggling
+  const reactionDebounceRef = useRef<Record<string, NodeJS.Timeout>>({})
+
+  // Get current user on mount
   useEffect(() => {
-    loadPosts()
-  }, [classId, filterCategory])
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) setCurrentUserId(user.id)
+    }
+    getUser()
+  }, [supabase.auth])
+
+  // Cleanup debounce timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(reactionDebounceRef.current).forEach(clearTimeout)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (currentUserId) loadPosts()
+  }, [classId, filterCategory, currentUserId])
 
   const loadPosts = async () => {
+    if (!currentUserId) return
+
     setLoading(true)
     let query = supabase
       .from('posts')
       .select(`
         *,
         profiles:author_id (full_name, email, role),
-        post_reactions:post_reactions(id),
+        post_reactions:post_reactions(id, user_id),
         comments:comments(id)
       `)
       .eq('class_id', classId)
@@ -68,21 +91,24 @@ export function CommunityTab({ classId }: CommunityTabProps) {
     const { data, error } = await query
 
     if (!error && data) {
-      setPosts(data as Post[])
+      // Compute has_liked and reaction_count for each post
+      const postsWithLikeStatus = data.map((post) => ({
+        ...post,
+        has_liked: post.post_reactions.some((r: { user_id: string }) => r.user_id === currentUserId),
+        reaction_count: post.post_reactions.length,
+      }))
+      setPosts(postsWithLikeStatus as Post[])
     }
     setLoading(false)
   }
 
   const handleCreatePost = async () => {
-    if (!newPostContent.trim()) return
+    if (!newPostContent.trim() || !currentUserId) return
 
     setPosting(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
     const { error } = await supabase.from('posts').insert({
       class_id: classId,
-      author_id: user.id,
+      author_id: currentUserId,
       category: newPostCategory,
       content: newPostContent,
       is_pinned: false,
@@ -95,6 +121,49 @@ export function CommunityTab({ classId }: CommunityTabProps) {
     }
     setPosting(false)
   }
+
+  // Toggle reaction with debounce and optimistic update
+  const toggleReaction = useCallback(async (postId: string, currentlyLiked: boolean) => {
+    if (!currentUserId) return
+
+    // Clear any pending debounce for this post
+    if (reactionDebounceRef.current[postId]) {
+      clearTimeout(reactionDebounceRef.current[postId])
+    }
+
+    // Optimistic update - immediately update UI
+    setPosts(prev => prev.map(post => {
+      if (post.id !== postId) return post
+      const newReactionCount = currentlyLiked ? post.reaction_count - 1 : post.reaction_count + 1
+      return {
+        ...post,
+        has_liked: !currentlyLiked,
+        reaction_count: newReactionCount,
+      }
+    }))
+
+    // Debounce the actual API call
+    reactionDebounceRef.current[postId] = setTimeout(async () => {
+      try {
+        if (currentlyLiked) {
+          // Remove reaction
+          await supabase
+            .from('post_reactions')
+            .delete()
+            .eq('post_id', postId)
+            .eq('user_id', currentUserId)
+        } else {
+          // Add reaction
+          await supabase
+            .from('post_reactions')
+            .insert({ post_id: postId, user_id: currentUserId })
+        }
+      } catch {
+        // Revert on error
+        loadPosts()
+      }
+    }, 300)
+  }, [currentUserId, supabase])
 
   const getCategoryColor = (category: Post['category']) => {
     switch (category) {
@@ -234,9 +303,16 @@ export function CommunityTab({ classId }: CommunityTabProps) {
 
                 {/* Post Actions */}
                 <div className="flex items-center gap-4 pt-4 border-t">
-                  <Button variant="ghost" size="sm">
-                    <Heart className="mr-2 h-4 w-4" />
-                    {post.post_reactions.length}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleReaction(post.id, post.has_liked)}
+                    className={post.has_liked ? 'text-red-500 hover:text-red-600' : ''}
+                  >
+                    <Heart
+                      className={`mr-2 h-4 w-4 ${post.has_liked ? 'fill-current' : ''}`}
+                    />
+                    {post.reaction_count}
                   </Button>
                   <Button variant="ghost" size="sm">
                     <MessageSquare className="mr-2 h-4 w-4" />
