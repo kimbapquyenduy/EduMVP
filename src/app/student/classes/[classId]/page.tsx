@@ -22,33 +22,20 @@ export default async function StudentClassPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get student profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Run all queries in parallel for better performance
+  const [profileResult, membershipResult, classResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('memberships').select('*').eq('class_id', classId).eq('user_id', user.id).single(),
+    supabase.from('classes').select('*').eq('id', classId).single(),
+  ])
+
+  const profile = profileResult.data
+  const membership = membershipResult.data
+  const classData = classResult.data
 
   if (!profile) redirect('/login')
   if (profile.role !== 'STUDENT') redirect('/teacher/dashboard')
-
-  // Verify student is enrolled in this class
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('*')
-    .eq('class_id', classId)
-    .eq('user_id', user.id)
-    .single()
-
   if (!membership) redirect('/student/dashboard')
-
-  // Get class data with denormalized counts (bypasses RLS visibility issue)
-  const { data: classData } = await supabase
-    .from('classes')
-    .select('*')
-    .eq('id', classId)
-    .single()
-
   if (!classData) redirect('/student/dashboard')
 
   return (
@@ -102,7 +89,7 @@ export default async function StudentClassPage({
           </TabsList>
 
           <TabsContent value="classroom">
-            <StudentCoursesView classId={classId} userId={user.id} membershipTier={membership.status} />
+            <StudentCoursesView classId={classId} userId={user.id} />
           </TabsContent>
 
           <TabsContent value="community">

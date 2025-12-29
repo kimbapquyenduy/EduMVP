@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { GraduationCap, Users, BookOpen, Loader2, Check, Search } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 interface Class {
   id: string
@@ -104,8 +106,36 @@ export function BrowseClasses({ userId }: BrowseClassesProps) {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        {/* Search skeleton */}
+        <Skeleton className="h-10 w-full" />
+
+        {/* Cards skeleton */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="aspect-video w-full" />
+              <CardHeader>
+                <div className="flex items-start justify-between mb-2">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-1/2" />
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     )
   }
@@ -138,16 +168,17 @@ export function BrowseClasses({ userId }: BrowseClassesProps) {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClasses.map((classItem) => (
             <Card key={classItem.id} className="clay-card overflow-hidden hover:shadow-lg transition-smooth">
-              {classItem.thumbnail_url && (
+              {classItem.thumbnail_url ? (
                 <div className="aspect-video bg-gradient-to-br from-primary to-secondary relative overflow-hidden">
-                  <img
+                  <Image
                     src={classItem.thumbnail_url}
                     alt={classItem.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    className="object-cover"
                   />
                 </div>
-              )}
-              {!classItem.thumbnail_url && (
+              ) : (
                 <div className="aspect-video bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                   <GraduationCap className="h-16 w-16 text-white opacity-50" />
                 </div>

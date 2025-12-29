@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
+import Image from 'next/image'
 import { PlusCircle, Users, BookOpen, DollarSign } from 'lucide-react'
 import { AppHeader } from '@/components/shared/AppHeader'
 
@@ -12,19 +13,14 @@ export default async function TeacherDashboard() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get teacher profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Run queries in parallel for better performance
+  const [profileResult, classesResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('classes').select('*').eq('teacher_id', user.id).order('created_at', { ascending: false }),
+  ])
 
-  // Get classes with denormalized counts (no N+1 queries needed)
-  const { data: classes } = await supabase
-    .from('classes')
-    .select('*')
-    .eq('teacher_id', user.id)
-    .order('created_at', { ascending: false })
+  const profile = profileResult.data
+  const classes = classesResult.data
 
   const totalMembers = (classes || []).reduce((acc, classItem) =>
     acc + (classItem.member_count || 0), 0)
@@ -123,10 +119,12 @@ export default async function TeacherDashboard() {
                 <Card className="clay-card hover:shadow-xl transition-smooth cursor-pointer group h-full hover:-translate-y-1 overflow-hidden">
                   {classItem.thumbnail_url ? (
                     <div className="h-40 bg-gradient-to-br from-primary to-secondary overflow-hidden relative">
-                      <img
+                      <Image
                         src={classItem.thumbnail_url}
                         alt={classItem.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                     </div>

@@ -21,33 +21,20 @@ export default async function ClassDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get teacher profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Run all queries in parallel for better performance
+  const [profileResult, classResult, memberCountResult, courseCountResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('classes').select('*').eq('id', classId).eq('teacher_id', user.id).single(),
+    supabase.from('memberships').select('*', { count: 'exact', head: true }).eq('class_id', classId),
+    supabase.from('courses').select('*', { count: 'exact', head: true }).eq('class_id', classId),
+  ])
 
-  // Get class data
-  const { data: classData } = await supabase
-    .from('classes')
-    .select('*')
-    .eq('id', classId)
-    .eq('teacher_id', user.id)
-    .single()
+  const profile = profileResult.data
+  const classData = classResult.data
+  const memberCount = memberCountResult.count
+  const courseCount = courseCountResult.count
 
   if (!classData) redirect('/teacher/dashboard')
-
-  // Get counts
-  const { count: memberCount } = await supabase
-    .from('memberships')
-    .select('*', { count: 'exact', head: true })
-    .eq('class_id', classId)
-
-  const { count: courseCount } = await supabase
-    .from('courses')
-    .select('*', { count: 'exact', head: true })
-    .eq('class_id', classId)
 
   return (
     <div className="min-h-screen bg-muted/30">

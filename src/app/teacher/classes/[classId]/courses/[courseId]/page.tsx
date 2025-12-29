@@ -18,22 +18,14 @@ export default async function CourseViewerPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get teacher profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Run queries in parallel for better performance
+  const [profileResult, courseResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('courses').select('*, class:classes(*)').eq('id', courseId).single(),
+  ])
 
-  // Get course data
-  const { data: course } = await supabase
-    .from('courses')
-    .select(`
-      *,
-      class:classes(*)
-    `)
-    .eq('id', courseId)
-    .single()
+  const profile = profileResult.data
+  const course = courseResult.data
 
   if (!course) redirect(`/teacher/classes/${classId}`)
 

@@ -50,6 +50,9 @@ next-env.d.ts
 # Supabase
 supabase/.temp/
 
+# Plans
+plans/
+
 # OS generated
 ehthumbs.db
 Desktop.ini

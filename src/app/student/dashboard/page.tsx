@@ -11,21 +11,17 @@ export default async function StudentDashboard() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get student profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Run queries in parallel for better performance
+  const [profileResult, enrolledCountResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('memberships').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+  ])
+
+  const profile = profileResult.data
+  const enrolledCount = enrolledCountResult.count
 
   if (!profile) redirect('/login')
   if (profile.role !== 'STUDENT') redirect('/teacher/dashboard')
-
-  // Get enrolled classes count
-  const { count: enrolledCount } = await supabase
-    .from('memberships')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
 
   return (
     <div className="min-h-screen bg-muted/30">

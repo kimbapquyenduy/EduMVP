@@ -6,10 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Lock, Unlock, Loader2, BookOpen, ArrowUp } from 'lucide-react'
+import { Lock, Unlock, BookOpen, ArrowUp } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import Link from 'next/link'
+import Image from 'next/image'
 import { TierPurchaseModal } from '@/components/checkout/TierPurchaseModal'
-import { TierPurchase, SubscriptionTier } from '@/lib/types/database.types'
+import { TierPurchase, SubscriptionTier, TierLevel } from '@/lib/types/database.types'
+import { getCourseAccessStatus, DEFAULT_TIER_NAMES, TierPurchaseWithTier } from '@/lib/utils/lesson-access'
 
 interface Lesson {
   id: string
@@ -28,7 +31,7 @@ interface Course {
   class_id: string
   title: string
   description: string | null
-  tier: 'FREE' | 'PREMIUM'
+  required_tier_level: TierLevel
   thumbnail_url: string | null
   order_index: number
   lessons: Lesson[]
@@ -39,13 +42,10 @@ interface Course {
 interface StudentCoursesViewProps {
   classId: string
   userId: string
-  membershipTier: string
 }
 
-export function StudentCoursesView({ classId, userId, membershipTier }: StudentCoursesViewProps) {
+export function StudentCoursesView({ classId, userId }: StudentCoursesViewProps) {
   const [courses, setCourses] = useState<Course[]>([])
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [loading, setLoading] = useState(true)
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
   const [tierPurchase, setTierPurchase] = useState<(TierPurchase & { tier: SubscriptionTier }) | null>(null)
@@ -74,10 +74,13 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
   const loadCourses = async () => {
     setLoading(true)
 
-    // Get all courses for this class
+    // Optimized: Get courses with lessons in a single query
     const { data: coursesData, error: coursesError } = await supabase
       .from('courses')
-      .select('*')
+      .select(`
+        *,
+        lessons:lessons(*)
+      `)
       .eq('class_id', classId)
       .order('order_index', { ascending: true })
 
@@ -86,60 +89,83 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
       return
     }
 
-    // Get lessons and progress for each course
-    const coursesWithProgress = await Promise.all(
-      coursesData.map(async (course) => {
-        // Get lessons
-        const { data: lessons } = await supabase
-          .from('lessons')
-          .select('*')
-          .eq('course_id', course.id)
-          .order('order_index', { ascending: true })
-
-        // Get progress for each lesson
-        const lessonsWithProgress = await Promise.all(
-          (lessons || []).map(async (lesson) => {
-            const { data: progress } = await supabase
-              .from('lesson_progress')
-              .select('*')
-              .eq('lesson_id', lesson.id)
-              .eq('user_id', userId)
-              .single()
-
-            return {
-              ...lesson,
-              is_completed: progress?.is_completed || false,
-            }
-          })
-        )
-
-        // Calculate completion percentage
-        const totalLessons = lessonsWithProgress.length
-        const completedLessons = lessonsWithProgress.filter((l) => l.is_completed).length
-        const completion_percentage =
-          totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
-
-        return {
-          ...course,
-          lessons: lessonsWithProgress,
-          completion_percentage,
-          lesson_count: lessonsWithProgress.length,
-        }
-      })
+    // Collect all lesson IDs for batch progress query
+    const allLessonIds = coursesData.flatMap(
+      (course) => (course.lessons || []).map((lesson: { id: string }) => lesson.id)
     )
+
+    // Single query to get all progress for this user
+    let progressMap: Record<string, boolean> = {}
+    if (allLessonIds.length > 0) {
+      const { data: progressData } = await supabase
+        .from('lesson_progress')
+        .select('lesson_id, is_completed')
+        .eq('user_id', userId)
+        .in('lesson_id', allLessonIds)
+
+      progressMap = (progressData || []).reduce(
+        (acc, p) => ({ ...acc, [p.lesson_id]: p.is_completed }),
+        {}
+      )
+    }
+
+    // Combine data in memory (no additional queries)
+    const coursesWithProgress = coursesData.map((course) => {
+      const lessons = (course.lessons || [])
+        .sort((a: { order_index: number }, b: { order_index: number }) => a.order_index - b.order_index)
+        .map((lesson: { id: string }) => ({
+          ...lesson,
+          is_completed: progressMap[lesson.id] || false,
+        }))
+
+      const totalLessons = lessons.length
+      const completedLessons = lessons.filter((l: { is_completed: boolean }) => l.is_completed).length
+      const completion_percentage =
+        totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+
+      return {
+        ...course,
+        lessons,
+        completion_percentage,
+        lesson_count: totalLessons,
+      }
+    })
 
     setCourses(coursesWithProgress as Course[])
     setLoading(false)
   }
 
   const canAccessCourse = (course: Course) => {
-    return course.tier === 'FREE' || membershipTier === 'PREMIUM'
+    const requiredTier = course.required_tier_level ?? 0
+    return getCourseAccessStatus(requiredTier, tierPurchase as TierPurchaseWithTier | null, false) === 'unlocked'
   }
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <Skeleton className="h-7 w-32" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="aspect-video w-full" />
+              <CardHeader className="pb-3">
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-full mt-2" />
+                <Skeleton className="h-4 w-2/3" />
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between mb-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <Skeleton className="h-4 w-20 mb-1" />
+                <Skeleton className="h-2 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     )
   }
@@ -177,11 +203,13 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
                   <Card className="hover:shadow-lg transition-all hover:scale-[1.02] group overflow-hidden h-full cursor-pointer">
                     {/* Thumbnail Image */}
                     {course.thumbnail_url ? (
-                      <div className="aspect-video w-full bg-muted overflow-hidden">
-                        <img
+                      <div className="aspect-video w-full bg-muted overflow-hidden relative">
+                        <Image
                           src={course.thumbnail_url}
                           alt={course.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                     ) : (
@@ -211,11 +239,11 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
                             </span>
                           </div>
                         </div>
-                        <Badge variant={course.tier === 'FREE' ? 'secondary' : 'default'} className="text-xs">
-                          {course.tier === 'FREE' ? (
-                            <><Unlock className="mr-1 h-3 w-3" /> Free</>
+                        <Badge variant={course.required_tier_level === 0 ? 'secondary' : 'default'} className="text-xs">
+                          {course.required_tier_level === 0 ? (
+                            <><Unlock className="mr-1 h-3 w-3" /> {DEFAULT_TIER_NAMES[0]}</>
                           ) : (
-                            <><Lock className="mr-1 h-3 w-3" /> Premium</>
+                            <><Lock className="mr-1 h-3 w-3" /> {DEFAULT_TIER_NAMES[course.required_tier_level]}</>
                           )}
                         </Badge>
                       </div>
@@ -239,10 +267,12 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
                   <div className="aspect-video w-full bg-muted overflow-hidden relative">
                     {course.thumbnail_url ? (
                       <>
-                        <img
+                        <Image
                           src={course.thumbnail_url}
                           alt={course.title}
-                          className="w-full h-full object-cover blur-sm"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover blur-sm"
                         />
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                           <Lock className="h-12 w-12 text-white" />
@@ -277,7 +307,7 @@ export function StudentCoursesView({ classId, userId, membershipTier }: StudentC
                         </div>
                       </div>
                       <Badge variant="default" className="text-xs">
-                        <Lock className="mr-1 h-3 w-3" /> Premium
+                        <Lock className="mr-1 h-3 w-3" /> {DEFAULT_TIER_NAMES[course.required_tier_level]}
                       </Badge>
                     </div>
 

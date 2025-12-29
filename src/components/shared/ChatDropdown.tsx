@@ -62,14 +62,43 @@ type FilterType = 'all' | 'unread'
 
 export function ChatDropdown({ userId, userRole }: ChatDropdownProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<FilterType>('all')
   const [open, setOpen] = useState(false)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const supabase = createClient()
 
-  // Load conversations
+  // Load unread count only (lightweight - for badge)
+  const loadUnreadCount = useCallback(async () => {
+    // Get conversation IDs where user is a participant
+    const { data: participations } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', userId)
+
+    if (!participations?.length) {
+      setUnreadCount(0)
+      return
+    }
+
+    const conversationIds = participations.map(p => p.conversation_id)
+
+    // Count unread messages in user's conversations
+    const { count } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .in('conversation_id', conversationIds)
+      .neq('sender_id', userId)
+      .eq('is_read', false)
+
+    setUnreadCount(count || 0)
+  }, [userId, supabase])
+
+  // Load full conversations (heavy - only when dropdown opened)
   const loadConversations = useCallback(async () => {
+    setLoading(true)
     const { data, error } = await supabase
       .from('conversations')
       .select(`
@@ -94,27 +123,33 @@ export function ChatDropdown({ userId, userRole }: ChatDropdownProps) {
     setLoading(false)
   }, [userId, supabase])
 
-  // Realtime updates
+  // Realtime updates - only refresh unread count, reload full data if open
   const handleConversationUpdate = useCallback(() => {
-    loadConversations()
-  }, [loadConversations])
+    loadUnreadCount()
+    if (open) {
+      loadConversations()
+    }
+  }, [loadUnreadCount, loadConversations, open])
 
   useConversationUpdates({
     userId,
     onNewMessage: handleConversationUpdate,
   })
 
-  // Load on initial mount for unread badge
+  // Load only unread count on mount (lightweight)
   useEffect(() => {
-    loadConversations()
-  }, [loadConversations])
+    loadUnreadCount()
+  }, [loadUnreadCount])
 
-  // Refresh when popover opens
+  // Load full conversations when popover opens (deferred heavy loading)
   useEffect(() => {
-    if (open) {
+    if (open && !hasLoadedOnce) {
+      loadConversations()
+      setHasLoadedOnce(true)
+    } else if (open) {
       loadConversations()
     }
-  }, [open, loadConversations])
+  }, [open, hasLoadedOnce, loadConversations])
 
   // Get other participant in conversation
   const getOtherParticipant = (conversation: Conversation) => {
@@ -140,11 +175,11 @@ export function ChatDropdown({ userId, userRole }: ChatDropdownProps) {
     ).length || 0
   }
 
-  // Total unread across all conversations
-  const totalUnread = conversations.reduce(
-    (acc, conv) => acc + getUnreadCount(conv),
-    0
-  )
+  // Total unread - use lightweight count state (updated separately)
+  // Fall back to computed count if conversations are loaded
+  const totalUnread = conversations.length > 0
+    ? conversations.reduce((acc, conv) => acc + getUnreadCount(conv), 0)
+    : unreadCount
 
   // Mark all as read
   const markAllAsRead = async () => {
@@ -161,6 +196,7 @@ export function ChatDropdown({ userId, userRole }: ChatDropdownProps) {
         .in('id', unreadMessageIds)
 
       loadConversations()
+      loadUnreadCount()
     }
   }
 

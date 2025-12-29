@@ -30,6 +30,7 @@ import { StartDMDialog } from '@/components/shared/StartDMDialog'
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages'
 import { useConversationUpdates } from '@/hooks/useConversationUpdates'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 
 // =============================================================================
 // TYPES
@@ -524,6 +525,7 @@ export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const urlHandledRef = useRef<string | null>(null) // Track which URL conversation was handled
   const supabase = createClient()
   const searchParams = useSearchParams()
   const conversationIdFromUrl = searchParams.get('conversation')
@@ -583,14 +585,16 @@ export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps
     loadConversations()
   }, [userId])
 
-  // Auto-select conversation from URL query parameter
+  // Auto-select conversation from URL query parameter (only on initial load or URL change)
   useEffect(() => {
-    if (!conversationIdFromUrl || selectedConversation?.id === conversationIdFromUrl) return
+    // Skip if no URL param, still loading, or this URL was already handled
+    if (!conversationIdFromUrl || loading || urlHandledRef.current === conversationIdFromUrl) return
 
     const conv = conversations.find((c) => c.id === conversationIdFromUrl)
     if (conv) {
       setSelectedConversation(conv)
-    } else if (!loading && conversations.length >= 0) {
+      urlHandledRef.current = conversationIdFromUrl
+    } else if (conversations.length >= 0) {
       // Conversation not in list (just created) - fetch it directly
       const fetchConversation = async () => {
         const { data } = await supabase
@@ -613,10 +617,11 @@ export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps
           })
           setSelectedConversation(data as Conversation)
         }
+        urlHandledRef.current = conversationIdFromUrl
       }
       fetchConversation()
     }
-  }, [conversationIdFromUrl, conversations, selectedConversation, loading])
+  }, [conversationIdFromUrl, conversations, loading])
 
   useEffect(() => {
     if (selectedConversation) {
@@ -655,6 +660,13 @@ export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps
 
     if (!error && data) {
       setConversations(data as Conversation[])
+
+      // Sync selectedConversation to new reference to prevent stale data
+      setSelectedConversation(prev => {
+        if (!prev) return null
+        const updatedSelected = data.find(c => c.id === prev.id)
+        return updatedSelected ? (updatedSelected as Conversation) : prev
+      })
     } else if (error) {
       console.error('Error loading conversations:', error)
     }
@@ -771,9 +783,16 @@ export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps
 
         <CardContent className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-              <p className="text-sm text-muted-foreground">Loading conversations...</p>
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg">
+                  <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredConversations.length === 0 ? (
             searchQuery ? (

@@ -50,21 +50,25 @@ export async function updateSession(request: NextRequest) {
 
   // Check role-based access if user is authenticated
   if (user && (isTeacherRoute || isStudentRoute)) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // Use role from JWT metadata (set during signup) - no DB query needed
+    const userRole = (user.user_metadata?.role as string)?.toUpperCase()
 
-    // Redirect teacher to correct dashboard
-    if (isStudentRoute && profile?.role === 'TEACHER') {
+    // If no role in metadata, redirect to login (shouldn't happen for new users)
+    if (!userRole) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+
+    // Redirect teacher to correct dashboard (block teacher from student routes)
+    if (isStudentRoute && userRole === 'TEACHER') {
       const url = request.nextUrl.clone()
       url.pathname = '/teacher/dashboard'
       return NextResponse.redirect(url)
     }
 
-    // Redirect student to correct dashboard
-    if (isTeacherRoute && profile?.role === 'STUDENT') {
+    // Redirect student to correct dashboard (block student from teacher routes)
+    if (isTeacherRoute && userRole === 'STUDENT') {
       const url = request.nextUrl.clone()
       url.pathname = '/student/dashboard'
       return NextResponse.redirect(url)

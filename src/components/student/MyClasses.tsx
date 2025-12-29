@@ -5,8 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Users, Loader2, GraduationCap } from 'lucide-react'
-import Link from 'next/link'
+import { BookOpen, Users, GraduationCap, Loader2 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 interface EnrolledClass {
   id: string
@@ -34,6 +36,8 @@ interface MyClassesProps {
 export function MyClasses({ userId }: MyClassesProps) {
   const [enrolledClasses, setEnrolledClasses] = useState<EnrolledClass[]>([])
   const [loading, setLoading] = useState(true)
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null)
+  const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
@@ -62,8 +66,28 @@ export function MyClasses({ userId }: MyClassesProps) {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="overflow-hidden">
+            <Skeleton className="aspect-video w-full" />
+            <CardHeader>
+              <div className="flex items-start justify-between mb-2">
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-5 w-16" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     )
   }
@@ -89,16 +113,17 @@ export function MyClasses({ userId }: MyClassesProps) {
 
         return (
           <Card key={enrollment.id} className="clay-card overflow-hidden hover:shadow-lg transition-smooth">
-            {classData.thumbnail_url && (
+            {classData.thumbnail_url ? (
               <div className="aspect-video bg-gradient-to-br from-primary to-secondary relative overflow-hidden">
-                <img
+                <Image
                   src={classData.thumbnail_url}
                   alt={classData.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover"
                 />
               </div>
-            )}
-            {!classData.thumbnail_url && (
+            ) : (
               <div className="aspect-video bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                 <GraduationCap className="h-16 w-16 text-white opacity-50" />
               </div>
@@ -125,12 +150,26 @@ export function MyClasses({ userId }: MyClassesProps) {
                 <Badge variant="outline" className="capitalize">
                   {enrollment.status}
                 </Badge>
-                <Link href={`/student/classes/${classData.id}`}>
-                  <Button className="w-full mt-2">
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    View Class
-                  </Button>
-                </Link>
+                <Button
+                  className="w-full mt-2"
+                  disabled={navigatingTo !== null}
+                  onClick={() => {
+                    setNavigatingTo(classData.id)
+                    router.push(`/student/classes/${classData.id}`)
+                  }}
+                >
+                  {navigatingTo === classData.id ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Going to class...
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      View Class
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>

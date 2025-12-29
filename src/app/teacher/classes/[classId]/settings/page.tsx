@@ -18,20 +18,14 @@ export default async function ClassSettingsPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get teacher profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Run queries in parallel for better performance
+  const [profileResult, classResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('classes').select('*').eq('id', classId).eq('teacher_id', user.id).single(),
+  ])
 
-  // Get class data
-  const { data: classData } = await supabase
-    .from('classes')
-    .select('*')
-    .eq('id', classId)
-    .eq('teacher_id', user.id)
-    .single()
+  const profile = profileResult.data
+  const classData = classResult.data
 
   if (!classData) redirect('/teacher/dashboard')
 

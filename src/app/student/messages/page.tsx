@@ -1,7 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { AppHeader } from '@/components/shared/AppHeader'
-import { MessagingInterface } from '@/components/shared/MessagingInterface'
+import { Loader2 } from 'lucide-react'
+
+// Dynamic import for code-splitting heavy messaging component
+const MessagingInterface = dynamic(
+  () => import('@/components/shared/MessagingInterface').then(mod => mod.MessagingInterface),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-[600px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+)
 
 export default async function StudentMessagesPage() {
   const supabase = await createClient()

@@ -16,48 +16,22 @@ export default async function StudentCourseViewerPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Get student profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // Run all queries in parallel for better performance
+  const [profileResult, membershipResult, courseResult, tierPurchaseResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('memberships').select('*').eq('user_id', user.id).eq('class_id', classId).single(),
+    supabase.from('courses').select('*, class:classes(*)').eq('id', courseId).single(),
+    supabase.from('tier_purchases').select('*, tier:subscription_tiers(*)').eq('user_id', user.id).eq('class_id', classId).maybeSingle(),
+  ])
 
-  if (!profile || profile.role !== 'STUDENT') {
-    redirect('/login')
-  }
+  const profile = profileResult.data
+  const membership = membershipResult.data
+  const course = courseResult.data
+  const tierPurchase = tierPurchaseResult.data
 
-  // Verify student is enrolled in this class
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('class_id', classId)
-    .single()
-
-  if (!membership) {
-    redirect('/student/dashboard')
-  }
-
-  // Get course data
-  const { data: course } = await supabase
-    .from('courses')
-    .select(`
-      *,
-      class:classes(*)
-    `)
-    .eq('id', courseId)
-    .single()
-
+  if (!profile || profile.role !== 'STUDENT') redirect('/login')
+  if (!membership) redirect('/student/dashboard')
   if (!course) redirect(`/student/classes/${classId}`)
-
-  // Fetch student's tier purchase for this class (may not exist yet)
-  const { data: tierPurchase } = await supabase
-    .from('tier_purchases')
-    .select('*, tier:subscription_tiers(*)')
-    .eq('user_id', user.id)
-    .eq('class_id', classId)
-    .maybeSingle()
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
