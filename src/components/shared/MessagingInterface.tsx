@@ -798,7 +798,7 @@ export function MessagingInterface({ userId, userRole }: MessagingInterfaceProps
             searchQuery ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <p className="text-sm">No conversations found for "{searchQuery}"</p>
+                <p className="text-sm">No conversations found for &quot;{searchQuery}&quot;</p>
               </div>
             ) : (
               <EmptyConversationsState />

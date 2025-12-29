@@ -56,7 +56,7 @@ export function CourseContentViewer({ course }: CourseContentViewerProps) {
           </div>
           <h3 className="text-xl font-semibold mb-2">No content available</h3>
           <p className="text-muted-foreground">
-            This course doesn't have any video or PDF content yet.
+            This course doesn&apos;t have any video or PDF content yet.
           </p>
         </Card>
       </div>

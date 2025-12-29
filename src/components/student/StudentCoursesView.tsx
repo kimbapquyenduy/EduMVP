@@ -177,7 +177,7 @@ export function StudentCoursesView({ classId, userId }: StudentCoursesViewProps)
           <BookOpen className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
           <h3 className="font-semibold text-lg mb-2">No courses available yet</h3>
           <p className="text-muted-foreground">
-            The teacher hasn't added any courses to this class yet.
+            The teacher hasn&apos;t added any courses to this class yet.
           </p>
         </CardContent>
       </Card>
