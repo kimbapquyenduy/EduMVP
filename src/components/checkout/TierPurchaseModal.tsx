@@ -109,11 +109,8 @@ export function TierPurchaseModal({
         onSuccess(result.purchase)
       }
 
-      const lessonText = selectedTier.lesson_unlock_count === null
-        ? 'tất cả bài học'
-        : `${selectedTier.lesson_unlock_count} bài học`
-
-      toast.success(`Đã mở khóa ${lessonText}!`)
+      // Show success message with tier name
+      toast.success(`Đã mở khóa gói ${selectedTier.name}!`)
     } catch (err) {
       console.error('Payment error:', err)
       setError('Đã xảy ra lỗi khi xử lý thanh toán')

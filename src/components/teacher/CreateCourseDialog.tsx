@@ -57,7 +57,7 @@ export function CreateCourseDialog({ classId, onCourseCreated }: CreateCourseDia
       class_id: classId,
       title: formData.get('title') as string,
       description: formData.get('description') as string,
-      tier: formData.get('tier') as 'FREE' | 'PREMIUM',
+      required_tier_level: parseInt(formData.get('required_tier_level') as string, 10),
       promo_video_url: finalPromoVideoUrl,
       thumbnail_url: finalThumbnailUrl,
     }
@@ -133,16 +133,21 @@ export function CreateCourseDialog({ classId, onCourseCreated }: CreateCourseDia
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tier">Access Tier *</Label>
-              <Select name="tier" defaultValue="FREE" required>
+              <Label htmlFor="required_tier_level">Required Tier Level *</Label>
+              <Select name="required_tier_level" defaultValue="0" required>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="FREE">Free</SelectItem>
-                  <SelectItem value="PREMIUM">Premium</SelectItem>
+                  <SelectItem value="0">Free - Anyone can access</SelectItem>
+                  <SelectItem value="1">Basic - Requires Basic tier or higher</SelectItem>
+                  <SelectItem value="2">Standard - Requires Standard tier or higher</SelectItem>
+                  <SelectItem value="3">Premium - Requires Premium tier</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Students must have at least this tier level to access the course
+              </p>
             </div>
 
             {/* Promo Video Section */}

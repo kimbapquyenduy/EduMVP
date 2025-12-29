@@ -4,7 +4,8 @@
 
 export type UserRole = 'TEACHER' | 'STUDENT'
 export type MembershipStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED'
-export type CourseTier = 'FREE' | 'PREMIUM'
+export type CourseTier = 'FREE' | 'PREMIUM' // Legacy - use TierLevel instead
+export type TierLevel = 0 | 1 | 2 | 3 // 0=Free, 1=Basic, 2=Standard, 3=Premium
 export type PostCategory = 'DISCUSSION' | 'ANNOUNCEMENT' | 'QUESTION' | 'UPDATE'
 
 // ============================================
@@ -74,7 +75,8 @@ export interface Course {
   class_id: string
   title: string
   description: string | null
-  tier: CourseTier
+  tier: CourseTier // Legacy field
+  required_tier_level: TierLevel // 0=Free, 1=Basic, 2=Standard, 3=Premium
   order_index: number
   thumbnail_url: string | null
   video_url: string | null
@@ -93,6 +95,7 @@ export interface Lesson {
   pdf_url: string | null
   order_index: number
   duration_minutes: number | null
+  required_tier_level: TierLevel | null // NULL = use course's required_tier_level
   created_at: string
   updated_at: string
 }
@@ -218,10 +221,10 @@ export type PaymentStatus = 'pending' | 'processing' | 'completed' | 'failed'
 export interface SubscriptionTier {
   id: string
   class_id: string
-  tier_level: 0 | 1 | 2 | 3 // 0=Free, 1=Basic, 2=Standard, 3=Premium
-  name: string
+  tier_level: TierLevel // 0=Free, 1=Basic, 2=Standard, 3=Premium
+  name: string // Configurable by teacher
+  description: string | null // Configurable description for students
   price: number // VND integer
-  lesson_unlock_count: number | null // NULL = unlimited
   is_enabled: boolean // Tier 0 always true, others configurable by teacher
   created_at: string
   updated_at: string

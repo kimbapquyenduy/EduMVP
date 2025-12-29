@@ -1,11 +1,11 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Check, Star, Lock, Unlock } from 'lucide-react'
+import { Check, Star, Unlock, Gift, Sparkles, Crown } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { SubscriptionTier } from '@/lib/types/database.types'
+import { SubscriptionTier, TierLevel } from '@/lib/types/database.types'
 
 interface TierCardProps {
   tier: SubscriptionTier
@@ -25,6 +25,13 @@ function formatVND(amount: number): string {
   }).format(amount)
 }
 
+const tierIcons: Record<TierLevel, typeof Gift> = {
+  0: Gift,
+  1: Star,
+  2: Sparkles,
+  3: Crown,
+}
+
 export function TierCard({
   tier,
   isSelected,
@@ -33,12 +40,16 @@ export function TierCard({
   currentTierLevel,
   onSelect,
 }: TierCardProps) {
-  const lessonText = tier.lesson_unlock_count === null
-    ? 'Tất cả bài học'
-    : `${tier.lesson_unlock_count} bài học`
-
   const isUpgrade = currentTierLevel !== undefined && tier.tier_level > currentTierLevel
   const isDowngrade = currentTierLevel !== undefined && tier.tier_level < currentTierLevel
+  const TierIcon = tierIcons[tier.tier_level]
+
+  // Generate access description based on tier level
+  const getAccessDescription = () => {
+    if (tier.tier_level === 0) return 'Nội dung miễn phí'
+    if (tier.tier_level === 3) return 'Truy cập toàn bộ nội dung'
+    return `Mở khóa tier 0-${tier.tier_level}`
+  }
 
   return (
     <Card
@@ -70,24 +81,30 @@ export function TierCard({
       )}
 
       <CardHeader className="text-center pb-2">
+        <div className="flex justify-center mb-2">
+          <TierIcon className="w-8 h-8 text-primary" />
+        </div>
         <CardTitle className="text-lg">{tier.name}</CardTitle>
+        {tier.description && (
+          <CardDescription className="text-sm">
+            {tier.description}
+          </CardDescription>
+        )}
       </CardHeader>
 
       <CardContent className="text-center space-y-4">
         <div className="space-y-1">
           <p className="text-2xl font-bold text-primary">
-            {formatVND(tier.price)}
+            {tier.price === 0 ? 'Miễn phí' : formatVND(tier.price)}
           </p>
-          <p className="text-sm text-muted-foreground">Thanh toán một lần</p>
+          {tier.price > 0 && (
+            <p className="text-sm text-muted-foreground">Thanh toán một lần</p>
+          )}
         </div>
 
         <div className="flex items-center justify-center gap-2 text-sm">
-          {tier.lesson_unlock_count === null ? (
-            <Unlock className="w-4 h-4 text-green-500" />
-          ) : (
-            <Lock className="w-4 h-4 text-muted-foreground" />
-          )}
-          <span>{lessonText}</span>
+          <Unlock className="w-4 h-4 text-green-500" />
+          <span>{getAccessDescription()}</span>
         </div>
 
         {isOwned ? (

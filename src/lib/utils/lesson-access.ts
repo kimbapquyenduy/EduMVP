@@ -1,4 +1,4 @@
-import { SubscriptionTier, TierPurchase } from '@/lib/types/database.types'
+import { SubscriptionTier, TierPurchase, TierLevel } from '@/lib/types/database.types'
 
 export type LessonAccessStatus = 'unlocked' | 'locked'
 
@@ -7,105 +7,83 @@ export interface TierPurchaseWithTier extends TierPurchase {
 }
 
 /**
- * Determine if a lesson is accessible based on tier purchase
+ * Get user's current tier level from their purchase
+ * Returns 0 (Free) if no purchase
+ */
+export function getUserTierLevel(tierPurchase: TierPurchaseWithTier | null): TierLevel {
+  return tierPurchase?.tier.tier_level ?? 0
+}
+
+/**
+ * Determine if content is accessible based on tier hierarchy
+ * User with tier N can access all content requiring tier 0 to N
  *
- * @param lessonIndex - 0-indexed position of the lesson
- * @param tierPurchase - User's tier purchase (null if none)
+ * @param requiredTierLevel - Tier level required for content (0-3)
+ * @param tierPurchase - User's tier purchase (null if none = tier 0)
  * @param isTeacher - Whether the user is the class teacher
- * @param freeTierLessonCount - Number of free lessons (from database, default 0)
  * @returns 'unlocked' if accessible, 'locked' if not
  */
-export function getLessonAccessStatus(
-  lessonIndex: number,
+export function getContentAccessStatus(
+  requiredTierLevel: TierLevel,
   tierPurchase: TierPurchaseWithTier | null,
-  isTeacher: boolean,
-  freeTierLessonCount: number = 0
+  isTeacher: boolean
 ): LessonAccessStatus {
   // Teachers always have full access
   if (isTeacher) return 'unlocked'
 
-  // Free lessons (configured by teacher)
-  if (lessonIndex < freeTierLessonCount) return 'unlocked'
+  // Get user's tier level (0 if no purchase)
+  const userTierLevel = getUserTierLevel(tierPurchase)
 
-  // No tier purchase = only free lessons
-  if (!tierPurchase) return 'locked'
-
-  // Tier 3 (unlimited) = full access
-  if (tierPurchase.tier.lesson_unlock_count === null) return 'unlocked'
-
-  // Check if lesson is within tier unlock count
-  if (lessonIndex < tierPurchase.tier.lesson_unlock_count) return 'unlocked'
-
-  return 'locked'
+  // User can access content if their tier >= required tier
+  return userTierLevel >= requiredTierLevel ? 'unlocked' : 'locked'
 }
 
 /**
- * Get the number of lessons accessible for a tier
+ * Determine if a lesson is accessible
+ * Lesson inherits course tier if its own tier is null
  *
- * @param tier - Subscription tier (null = free)
- * @param freeTierLessonCount - Number of free lessons (from database, default 0)
- * @returns Number of accessible lessons (Infinity for unlimited)
- */
-export function getUnlockableCount(
-  tier: SubscriptionTier | null,
-  freeTierLessonCount: number = 0
-): number {
-  if (!tier) return freeTierLessonCount
-  return tier.lesson_unlock_count ?? Infinity
-}
-
-/**
- * Get the unlock count for display purposes
- *
- * @param tierPurchase - User's tier purchase (null if none)
- * @param freeTierLessonCount - Number of free lessons (from database, default 0)
- * @returns Number of unlocked lessons or 'all' for unlimited
- */
-export function getUnlockedLessonCount(
-  tierPurchase: TierPurchaseWithTier | null,
-  freeTierLessonCount: number = 0
-): number | 'all' {
-  if (!tierPurchase) return freeTierLessonCount
-  return tierPurchase.tier.lesson_unlock_count ?? 'all'
-}
-
-/**
- * Calculate number of accessible lessons for progress display
- *
- * @param totalLessons - Total number of lessons in the course/class
+ * @param lessonTierLevel - Lesson's required tier (null = use course tier)
+ * @param courseTierLevel - Course's required tier
  * @param tierPurchase - User's tier purchase (null if none)
  * @param isTeacher - Whether the user is the class teacher
- * @param freeTierLessonCount - Number of free lessons (from database, default 0)
- * @returns Number of accessible lessons
+ * @returns 'unlocked' if accessible, 'locked' if not
  */
-export function getAccessibleLessonCount(
-  totalLessons: number,
+export function getLessonAccessStatus(
+  lessonTierLevel: TierLevel | null,
+  courseTierLevel: TierLevel,
   tierPurchase: TierPurchaseWithTier | null,
-  isTeacher: boolean,
-  freeTierLessonCount: number = 0
-): number {
-  if (isTeacher) return totalLessons
-
-  if (!tierPurchase) {
-    return Math.min(freeTierLessonCount, totalLessons)
-  }
-
-  if (tierPurchase.tier.lesson_unlock_count === null) {
-    return totalLessons
-  }
-
-  return Math.min(tierPurchase.tier.lesson_unlock_count, totalLessons)
+  isTeacher: boolean
+): LessonAccessStatus {
+  // Use lesson tier if set, otherwise inherit from course
+  const requiredTier = lessonTierLevel ?? courseTierLevel
+  return getContentAccessStatus(requiredTier, tierPurchase, isTeacher)
 }
 
 /**
- * Check if upgrade is available (not at max tier)
+ * Determine if a course is accessible
+ *
+ * @param courseTierLevel - Course's required tier level
+ * @param tierPurchase - User's tier purchase (null if none)
+ * @param isTeacher - Whether the user is the class teacher
+ * @returns 'unlocked' if accessible, 'locked' if not
+ */
+export function getCourseAccessStatus(
+  courseTierLevel: TierLevel,
+  tierPurchase: TierPurchaseWithTier | null,
+  isTeacher: boolean
+): LessonAccessStatus {
+  return getContentAccessStatus(courseTierLevel, tierPurchase, isTeacher)
+}
+
+/**
+ * Check if user can upgrade to a higher tier
  *
  * @param tierPurchase - User's tier purchase (null if none)
  * @returns true if user can upgrade
  */
 export function canUpgrade(tierPurchase: TierPurchaseWithTier | null): boolean {
-  if (!tierPurchase) return true
-  return tierPurchase.tier.tier_level < 3
+  const userTierLevel = getUserTierLevel(tierPurchase)
+  return userTierLevel < 3
 }
 
 /**
@@ -114,46 +92,37 @@ export function canUpgrade(tierPurchase: TierPurchaseWithTier | null): boolean {
  * @param tierPurchase - User's tier purchase (null if none)
  * @returns Next tier level (1, 2, or 3)
  */
-export function getNextTierLevel(
-  tierPurchase: TierPurchaseWithTier | null
-): 1 | 2 | 3 {
-  if (!tierPurchase) return 1
-  const current = tierPurchase.tier.tier_level
+export function getNextTierLevel(tierPurchase: TierPurchaseWithTier | null): 1 | 2 | 3 {
+  const current = getUserTierLevel(tierPurchase)
   return Math.min(current + 1, 3) as 1 | 2 | 3
 }
 
 /**
- * Format lesson access text for display
+ * Get all accessible tier levels for a user
+ * User with tier N can access tiers 0, 1, ..., N
  *
- * @param accessibleCount - Number of accessible lessons
- * @param totalCount - Total lessons
- * @returns Formatted text like "5/20 bài học"
+ * @param tierPurchase - User's tier purchase (null if none)
+ * @returns Array of accessible tier levels
  */
-export function formatLessonAccess(
-  accessibleCount: number,
-  totalCount: number
-): string {
-  if (accessibleCount >= totalCount) {
-    return `${totalCount}/${totalCount} bài học`
-  }
-  return `${accessibleCount}/${totalCount} bài học`
+export function getAccessibleTierLevels(tierPurchase: TierPurchaseWithTier | null): TierLevel[] {
+  const userTierLevel = getUserTierLevel(tierPurchase)
+  return [0, 1, 2, 3].filter((level) => level <= userTierLevel) as TierLevel[]
 }
 
 /**
- * Tier access matrix for reference
- * Note: All values are now teacher-configurable via the database.
- * The values below are just defaults used by the create_default_tiers() trigger.
- *
- * | Tier        | Default lesson_unlock_count | Description           |
- * |-------------|-----------------------------|-----------------------|
- * | Free (0)    | 0 (configurable)            | Teacher sets count    |
- * | Tier 1      | 5 (configurable)            | Cơ bản                |
- * | Tier 2      | 10 (configurable)           | Tiêu chuẩn            |
- * | Tier 3      | NULL (unlimited)            | Trọn bộ               |
+ * Tier display names (default - teachers can customize)
  */
-export const DEFAULT_TIER_LESSON_COUNTS = {
-  free: 0,
-  tier1: 5,
-  tier2: 10,
-  tier3: null, // unlimited
-} as const
+export const DEFAULT_TIER_NAMES: Record<TierLevel, string> = {
+  0: 'Miễn phí',
+  1: 'Cơ bản',
+  2: 'Tiêu chuẩn',
+  3: 'Trọn bộ',
+}
+
+/**
+ * Get tier name from subscription tier or default
+ */
+export function getTierName(tier: SubscriptionTier | null, level: TierLevel): string {
+  if (tier?.name) return tier.name
+  return DEFAULT_TIER_NAMES[level]
+}

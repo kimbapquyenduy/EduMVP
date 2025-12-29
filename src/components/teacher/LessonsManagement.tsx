@@ -15,6 +15,9 @@ import { useRouter } from 'next/navigation'
 import { VideoUpload } from './VideoUpload'
 import { PDFUpload } from './PDFUpload'
 import { RichTextEditor } from '../shared/RichTextEditor'
+import { LessonTierSelector } from './LessonTierSelector'
+
+type TierLevel = 0 | 1 | 2 | 3 | null
 
 interface Lesson {
   id: string
@@ -25,6 +28,7 @@ interface Lesson {
   pdf_url: string | null
   order_index: number
   duration_minutes: number | null
+  required_tier_level: TierLevel
   created_at: string
 }
 
@@ -360,10 +364,18 @@ export function LessonsManagement({ courseId, classId }: LessonsManagementProps)
               </div>
             ) : (
               lessons.map((lesson, index) => (
-                <button
+                <div
                   key={lesson.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedLesson(lesson)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setSelectedLesson(lesson)
+                    }
+                  }}
+                  className={`w-full text-left p-3 rounded-lg transition-colors cursor-pointer ${
                     selectedLesson?.id === lesson.id
                       ? 'bg-primary/10 border border-primary'
                       : 'hover:bg-muted/50 border border-transparent'
@@ -386,9 +398,30 @@ export function LessonsManagement({ courseId, classId }: LessonsManagementProps)
                           <FileText className="h-3 w-3" />
                         )}
                       </div>
+                      <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                        <LessonTierSelector
+                          lessonId={lesson.id}
+                          currentTier={lesson.required_tier_level}
+                          onTierChange={(newTier) => {
+                            setLessons((prev) =>
+                              prev.map((l) =>
+                                l.id === lesson.id
+                                  ? { ...l, required_tier_level: newTier }
+                                  : l
+                              )
+                            )
+                            if (selectedLesson?.id === lesson.id) {
+                              setSelectedLesson((prev) =>
+                                prev ? { ...prev, required_tier_level: newTier } : null
+                              )
+                            }
+                          }}
+                          compact
+                        />
+                      </div>
                     </div>
                   </div>
-                </button>
+                </div>
               ))
             )}
           </CardContent>
@@ -412,6 +445,22 @@ export function LessonsManagement({ courseId, classId }: LessonsManagementProps)
                           {formatDuration(selectedLesson.duration_minutes)}
                         </Badge>
                       )}
+                      <LessonTierSelector
+                        lessonId={selectedLesson.id}
+                        currentTier={selectedLesson.required_tier_level}
+                        onTierChange={(newTier) => {
+                          setLessons((prev) =>
+                            prev.map((l) =>
+                              l.id === selectedLesson.id
+                                ? { ...l, required_tier_level: newTier }
+                                : l
+                            )
+                          )
+                          setSelectedLesson((prev) =>
+                            prev ? { ...prev, required_tier_level: newTier } : null
+                          )
+                        }}
+                      />
                     </div>
                     <CardTitle className="text-2xl">{selectedLesson.title}</CardTitle>
                   </div>

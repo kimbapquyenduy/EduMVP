@@ -8,8 +8,8 @@ import { Progress } from '@/components/ui/progress'
 import { PlayCircle, FileText, Download, ExternalLink, Check, ChevronDown, ChevronUp, CheckCircle, Lock } from 'lucide-react'
 import { UnlockPrompt } from '@/components/shared/UnlockPrompt'
 import { TierPurchaseModal } from '@/components/checkout/TierPurchaseModal'
-import { getLessonAccessStatus, getAccessibleLessonCount, TierPurchaseWithTier } from '@/lib/utils/lesson-access'
-import { TierPurchase, SubscriptionTier } from '@/lib/types/database.types'
+import { getLessonAccessStatus, TierPurchaseWithTier } from '@/lib/utils/lesson-access'
+import { TierPurchase, SubscriptionTier, TierLevel } from '@/lib/types/database.types'
 
 interface Lesson {
   id: string
@@ -20,27 +20,28 @@ interface Lesson {
   pdf_url: string | null
   duration_minutes: number | null
   order_index: number
+  required_tier_level: 0 | 1 | 2 | 3 | null
   is_completed: boolean
 }
 
 interface StudentCourseViewerProps {
   courseId: string
   courseTitle: string
+  courseTierLevel: TierLevel
   userId: string
   classId: string
   className?: string
   tierPurchase?: (TierPurchase & { tier: SubscriptionTier }) | null
-  freeTierLessonCount?: number
 }
 
 export function StudentCourseViewer({
   courseId,
   courseTitle,
+  courseTierLevel,
   userId,
   classId,
   className,
   tierPurchase = null,
-  freeTierLessonCount = 0,
 }: StudentCourseViewerProps) {
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
@@ -78,9 +79,9 @@ export function StudentCourseViewer({
 
       setLessons(lessonsWithProgress as Lesson[])
 
-      // Find first accessible lesson based on tier
-      const firstAccessibleIndex = lessonsWithProgress.findIndex((_, index) => {
-        const status = getLessonAccessStatus(index, currentTierPurchase, false, freeTierLessonCount)
+      // Find first accessible lesson based on tier hierarchy
+      const firstAccessibleIndex = lessonsWithProgress.findIndex((lesson) => {
+        const status = getLessonAccessStatus(lesson.required_tier_level, courseTierLevel, currentTierPurchase, false)
         return status === 'unlocked'
       })
       const lessonToSelect = firstAccessibleIndex >= 0
@@ -89,7 +90,7 @@ export function StudentCourseViewer({
       setSelectedLesson(lessonToSelect as Lesson)
     }
     setLoading(false)
-  }, [courseId, userId, supabase, currentTierPurchase, freeTierLessonCount])
+  }, [courseId, userId, supabase, currentTierPurchase, courseTierLevel])
 
   useEffect(() => {
     loadLessons()
@@ -164,17 +165,17 @@ export function StudentCourseViewer({
     [selectedLesson, lessons]
   )
 
-  // Compute lesson access status for each lesson
+  // Compute lesson access status for each lesson using tier hierarchy
   const lessonAccessMap = useMemo(() => {
-    return lessons.map((_, index) =>
-      getLessonAccessStatus(index, currentTierPurchase, false, freeTierLessonCount)
+    return lessons.map((lesson) =>
+      getLessonAccessStatus(lesson.required_tier_level, courseTierLevel, currentTierPurchase, false)
     )
-  }, [lessons, currentTierPurchase, freeTierLessonCount])
+  }, [lessons, currentTierPurchase, courseTierLevel])
 
-  // Calculate accessible lesson count
+  // Calculate accessible lesson count based on tier hierarchy
   const accessibleCount = useMemo(() => {
-    return getAccessibleLessonCount(lessons.length, currentTierPurchase, false, freeTierLessonCount)
-  }, [lessons.length, currentTierPurchase, freeTierLessonCount])
+    return lessonAccessMap.filter((status) => status === 'unlocked').length
+  }, [lessonAccessMap])
 
   // Check if selected lesson is locked
   const isSelectedLessonLocked = useMemo(() => {

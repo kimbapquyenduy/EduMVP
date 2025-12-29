@@ -34,10 +34,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       // Create default tiers for this class
       const defaultTiers = [
-        { class_id: classId, tier_level: 0, name: 'Miễn phí', price: 0, lesson_unlock_count: 0, is_enabled: true },
-        { class_id: classId, tier_level: 1, name: 'Cơ bản', price: 50000, lesson_unlock_count: 5, is_enabled: true },
-        { class_id: classId, tier_level: 2, name: 'Tiêu chuẩn', price: 100000, lesson_unlock_count: 10, is_enabled: true },
-        { class_id: classId, tier_level: 3, name: 'Trọn bộ', price: 200000, lesson_unlock_count: null, is_enabled: true },
+        { class_id: classId, tier_level: 0, name: 'Miễn phí', description: 'Truy cập nội dung miễn phí', price: 0, is_enabled: true },
+        { class_id: classId, tier_level: 1, name: 'Cơ bản', description: 'Mở khóa nội dung cơ bản', price: 50000, is_enabled: true },
+        { class_id: classId, tier_level: 2, name: 'Tiêu chuẩn', description: 'Mở khóa nội dung tiêu chuẩn', price: 100000, is_enabled: true },
+        { class_id: classId, tier_level: 3, name: 'Trọn bộ', description: 'Truy cập toàn bộ nội dung', price: 200000, is_enabled: true },
       ]
 
       const { data: createdTiers, error: insertError } = await supabase
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 /**
  * PUT /api/tiers/[classId]
  * Update tier settings for a class (teacher only)
- * Supports updating price and lesson_unlock_count
+ * Supports updating name, description, price, and is_enabled
  */
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
@@ -112,8 +112,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { tiers } = body as {
       tiers: Array<{
         id: string
+        name: string
+        description: string | null
         price: number
-        lesson_unlock_count: number | null
         is_enabled: boolean
       }>
     }
@@ -127,18 +128,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Validate tier data
     for (const tier of tiers) {
-      if (typeof tier.price !== 'number' || tier.price < 0) {
+      if (!tier.name || typeof tier.name !== 'string') {
         return NextResponse.json(
-          { error: 'Giá phải là số không âm' },
+          { error: 'Tên gói không được để trống' },
           { status: 400 }
         )
       }
-      if (
-        tier.lesson_unlock_count !== null &&
-        (typeof tier.lesson_unlock_count !== 'number' || tier.lesson_unlock_count < 0)
-      ) {
+      if (typeof tier.price !== 'number' || tier.price < 0) {
         return NextResponse.json(
-          { error: 'Số bài mở khóa phải là số không âm hoặc null' },
+          { error: 'Giá phải là số không âm' },
           { status: 400 }
         )
       }
@@ -155,8 +153,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       const { error: updateError } = await supabase
         .from('subscription_tiers')
         .update({
+          name: tier.name,
+          description: tier.description,
           price: tier.price,
-          lesson_unlock_count: tier.lesson_unlock_count,
           is_enabled: tier.is_enabled,
         })
         .eq('id', tier.id)
@@ -182,7 +181,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     console.error('Update tiers error:', error)
     return NextResponse.json(
-      { error: 'Không thể cập nhật giá gói' },
+      { error: 'Không thể cập nhật cài đặt gói' },
       { status: 500 }
     )
   }

@@ -59,16 +59,6 @@ export default async function StudentCourseViewerPage({
     .eq('class_id', classId)
     .maybeSingle()
 
-  // Fetch free tier lesson count
-  const { data: freeTier } = await supabase
-    .from('subscription_tiers')
-    .select('lesson_unlock_count')
-    .eq('class_id', classId)
-    .eq('tier_level', 0)
-    .single()
-
-  const freeTierLessonCount = freeTier?.lesson_unlock_count ?? 0
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AppHeader
@@ -94,11 +84,11 @@ export default async function StudentCourseViewerPage({
       <StudentCourseViewer
         courseId={courseId}
         courseTitle={course.title}
+        courseTierLevel={course.required_tier_level ?? 0}
         userId={user.id}
         classId={classId}
         className={course.class.name}
         tierPurchase={tierPurchase}
-        freeTierLessonCount={freeTierLessonCount}
       />
     </div>
   )

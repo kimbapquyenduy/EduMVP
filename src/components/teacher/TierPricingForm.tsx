@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { Settings, Loader2, Check, Gift, Star, Sparkles, Crown } from 'lucide-react'
 import { toast } from 'sonner'
 import { SubscriptionTier } from '@/lib/types/database.types'
@@ -22,21 +23,22 @@ interface TierConfig {
   icon: LucideIcon
   color: string
   defaultName: string
+  defaultDescription: string
 }
 
 const tierConfigs: TierConfig[] = [
-  { level: 0, icon: Gift, color: 'text-gray-600', defaultName: 'Miễn phí' },
-  { level: 1, icon: Star, color: 'text-blue-600', defaultName: 'Cơ bản' },
-  { level: 2, icon: Sparkles, color: 'text-purple-600', defaultName: 'Tiêu chuẩn' },
-  { level: 3, icon: Crown, color: 'text-amber-600', defaultName: 'Trọn bộ' },
+  { level: 0, icon: Gift, color: 'text-gray-600', defaultName: 'Miễn phí', defaultDescription: 'Truy cập nội dung miễn phí' },
+  { level: 1, icon: Star, color: 'text-blue-600', defaultName: 'Cơ bản', defaultDescription: 'Mở khóa nội dung cơ bản' },
+  { level: 2, icon: Sparkles, color: 'text-purple-600', defaultName: 'Tiêu chuẩn', defaultDescription: 'Mở khóa nội dung tiêu chuẩn' },
+  { level: 3, icon: Crown, color: 'text-amber-600', defaultName: 'Trọn bộ', defaultDescription: 'Truy cập toàn bộ nội dung' },
 ]
 
 interface TierFormData {
   id: string
   tier_level: number
   name: string
+  description: string
   price: number
-  lesson_unlock_count: number | null
   is_enabled: boolean
 }
 
@@ -69,8 +71,8 @@ export function TierPricingForm({ classId }: TierPricingFormProps) {
           id: t.id,
           tier_level: t.tier_level,
           name: t.name,
+          description: t.description || '',
           price: t.price,
-          lesson_unlock_count: t.lesson_unlock_count,
           is_enabled: t.is_enabled ?? true,
         }))
       )
@@ -82,7 +84,7 @@ export function TierPricingForm({ classId }: TierPricingFormProps) {
     }
   }
 
-  const updateTier = (level: number, field: keyof TierFormData, value: number | string | boolean | null) => {
+  const updateTier = (level: number, field: keyof TierFormData, value: number | string | boolean) => {
     setTiers((prev) =>
       prev.map((t) => (t.tier_level === level ? { ...t, [field]: value } : t))
     )
@@ -98,8 +100,9 @@ export function TierPricingForm({ classId }: TierPricingFormProps) {
         body: JSON.stringify({
           tiers: tiers.map((t) => ({
             id: t.id,
+            name: t.name,
+            description: t.description || null,
             price: t.price,
-            lesson_unlock_count: t.lesson_unlock_count,
             is_enabled: t.is_enabled,
           })),
         }),
@@ -145,7 +148,7 @@ export function TierPricingForm({ classId }: TierPricingFormProps) {
           Cài đặt gói học
         </CardTitle>
         <CardDescription>
-          Đặt giá và số bài học mở khóa cho mỗi gói. Học viên mua gói để mở khóa bài học.
+          Đặt tên, mô tả và giá cho mỗi gói. Học viên mua gói cao hơn sẽ mở khóa tất cả nội dung từ gói thấp hơn.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -155,7 +158,6 @@ export function TierPricingForm({ classId }: TierPricingFormProps) {
             if (!tier) return null
 
             const Icon = config.icon
-            const isUnlimited = tier.lesson_unlock_count === null
             const isFree = config.level === 0
             const isEnabled = tier.is_enabled
             const isDisabledTier = !isFree && !isEnabled
@@ -170,7 +172,7 @@ export function TierPricingForm({ classId }: TierPricingFormProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Icon className={`w-5 h-5 ${config.color}`} />
-                    <span className="font-medium">{tier.name}</span>
+                    <span className="font-medium">Gói {config.level}</span>
                     {isFree && (
                       <Badge variant="secondary" className="text-xs">
                         Mặc định
@@ -201,6 +203,21 @@ export function TierPricingForm({ classId }: TierPricingFormProps) {
                 {(isFree || isEnabled) && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
+                      {/* Tier Name */}
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">
+                          Tên gói
+                        </Label>
+                        <Input
+                          placeholder={config.defaultName}
+                          value={tier.name}
+                          onChange={(e) => {
+                            updateTier(config.level, 'name', e.target.value)
+                          }}
+                          disabled={isSaving}
+                        />
+                      </div>
+
                       {/* Price */}
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">
@@ -221,59 +238,30 @@ export function TierPricingForm({ classId }: TierPricingFormProps) {
                           </span>
                         </div>
                       </div>
-
-                      {/* Lesson Count */}
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">
-                          Số bài mở khóa
-                        </Label>
-                        {config.level === 3 ? (
-                          <div className="flex items-center gap-2 h-9">
-                            <Switch
-                              checked={isUnlimited}
-                              onCheckedChange={(checked) => {
-                                updateTier(config.level, 'lesson_unlock_count', checked ? null : 10)
-                              }}
-                              disabled={isSaving}
-                            />
-                            <span className="text-sm">
-                              {isUnlimited ? 'Tất cả bài học' : 'Giới hạn'}
-                            </span>
-                          </div>
-                        ) : (
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0"
-                            value={tier.lesson_unlock_count ?? 0}
-                            onChange={(e) => {
-                              updateTier(
-                                config.level,
-                                'lesson_unlock_count',
-                                parseInt(e.target.value) || 0
-                              )
-                            }}
-                            disabled={isSaving}
-                          />
-                        )}
-                      </div>
                     </div>
 
-                    {!isFree && !isUnlimited && tier.lesson_unlock_count !== null && (
-                      <p className="text-xs text-muted-foreground">
-                        Học viên mua gói này sẽ mở khóa {tier.lesson_unlock_count} bài học đầu tiên
-                      </p>
-                    )}
-                    {isFree && (
-                      <p className="text-xs text-muted-foreground">
-                        Học viên chưa mua gói sẽ có {tier.lesson_unlock_count ?? 0} bài học miễn phí
-                      </p>
-                    )}
-                    {isUnlimited && (
-                      <p className="text-xs text-muted-foreground">
-                        Học viên mua gói này sẽ mở khóa tất cả bài học trong lớp
-                      </p>
-                    )}
+                    {/* Description */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Mô tả (hiển thị cho học viên)
+                      </Label>
+                      <Textarea
+                        placeholder={config.defaultDescription}
+                        value={tier.description}
+                        onChange={(e) => {
+                          updateTier(config.level, 'description', e.target.value)
+                        }}
+                        disabled={isSaving}
+                        rows={2}
+                        className="resize-none"
+                      />
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      {isFree
+                        ? 'Học viên chưa mua gói sẽ chỉ truy cập được nội dung miễn phí (tier 0)'
+                        : `Học viên mua gói này sẽ mở khóa tất cả nội dung từ tier 0 đến tier ${config.level}`}
+                    </p>
                   </>
                 )}
               </div>

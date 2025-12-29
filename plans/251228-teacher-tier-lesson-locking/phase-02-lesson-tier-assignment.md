@@ -10,8 +10,9 @@
 |-------|-------|
 | Date | 2025-12-28 |
 | Priority | High |
-| Implementation | Not Started |
-| Review | Not Started |
+| Implementation | DONE |
+| Review | DONE |
+| Completed | 2025-12-28 |
 
 ## Key Insights
 - Current lessons table has no tier column
@@ -105,11 +106,11 @@ Tier Selector Dropdown:
 ```
 
 ## Todo List
-- [ ] Create migration 012_LESSON_TIER_REQUIREMENTS.sql
-- [ ] Update Lesson type in database.types.ts
-- [ ] Create LessonTierSelector component
-- [ ] Update LessonsManagement to show/edit tier
-- [ ] Update lesson create/update handlers
+- [x] Create migration 012_LESSON_TIER_REQUIREMENTS.sql
+- [x] Update Lesson type in database.types.ts
+- [x] Create LessonTierSelector component
+- [x] Update LessonsManagement to show/edit tier
+- [x] Update lesson create/update handlers
 
 ## Success Criteria
 - [x] Teacher can set tier for any lesson

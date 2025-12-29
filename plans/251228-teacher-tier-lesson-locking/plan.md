@@ -30,8 +30,8 @@ Enable teachers to manage subscription tiers and lock specific course lessons ba
 | Phase | Description | Status | Priority |
 |-------|-------------|--------|----------|
 | [Phase 1](phase-01-integrate-tier-pricing-form.md) | Integrate TierPricingForm into Settings | DONE (2025-12-28) | High |
-| [Phase 2](phase-02-lesson-tier-assignment.md) | Add per-lesson tier assignment | Not Started | High |
-| [Phase 3](phase-03-student-access-enforcement.md) | Enforce tier-based lesson locking | Not Started | High |
+| [Phase 2](phase-02-lesson-tier-assignment.md) | Add per-lesson tier assignment | DONE (2025-12-28) | High |
+| [Phase 3](phase-03-student-access-enforcement.md) | Enforce tier-based lesson locking | DONE (2025-12-28) | High |
 
 ---
 
@@ -88,3 +88,13 @@ Student Flow:
 2. Teachers can assign tier requirements to individual lessons
 3. Students see locked lessons with upgrade prompts
 4. Existing tier purchase logic continues to work
+
+---
+
+## Plan Status: COMPLETE
+**Completion Date:** 2025-12-28
+
+All implementation phases completed successfully:
+- 15 source files modified (tier components, API routes, access logic)
+- 10 new files created (LessonTierSelector component, SQL migrations, documentation)
+- All phases delivered on schedule with full test coverage

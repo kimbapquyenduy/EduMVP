@@ -6,11 +6,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PlusCircle, Video, FileText, Lock, Unlock, Trash2, Loader2, Eye, BookOpen } from 'lucide-react'
-import type { Course } from '@/lib/types/database.types'
+import { PlusCircle, Video, FileText, Lock, Unlock, Trash2, Loader2, Eye, BookOpen, Shield, Star, Crown } from 'lucide-react'
+import type { Course, TierLevel } from '@/lib/types/database.types'
 import { CreateCourseDialog } from './CreateCourseDialog'
 import { useToast } from '@/hooks/use-toast'
 import Link from 'next/link'
+
+// Tier display configuration
+const TIER_CONFIG: Record<TierLevel, { label: string; variant: 'secondary' | 'default' | 'outline'; icon: typeof Unlock }> = {
+  0: { label: 'Free', variant: 'secondary', icon: Unlock },
+  1: { label: 'Basic', variant: 'outline', icon: Shield },
+  2: { label: 'Standard', variant: 'default', icon: Star },
+  3: { label: 'Premium', variant: 'default', icon: Crown },
+}
 
 interface CoursesTabProps {
   classId: string
@@ -179,13 +187,16 @@ export function CoursesTab({ classId }: CoursesTabProps) {
                         </>
                       )}
                     </div>
-                    <Badge variant={course.tier === 'FREE' ? 'secondary' : 'default'} className="text-xs">
-                      {course.tier === 'FREE' ? (
-                        <><Unlock className="mr-1 h-3 w-3" /> Free</>
-                      ) : (
-                        <><Lock className="mr-1 h-3 w-3" /> Premium</>
-                      )}
-                    </Badge>
+                    {(() => {
+                      const tierLevel = (course.required_tier_level ?? 0) as TierLevel
+                      const config = TIER_CONFIG[tierLevel]
+                      const TierIcon = config.icon
+                      return (
+                        <Badge variant={config.variant} className="text-xs">
+                          <TierIcon className="mr-1 h-3 w-3" /> {config.label}
+                        </Badge>
+                      )
+                    })()}
                   </div>
 
                   {/* Progress Bar */}
